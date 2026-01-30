@@ -68,6 +68,7 @@ http://localhost:3000
 ```
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
 ```
+> **不要把 `.env` / `.env.local` 提交到仓库**（已在 `.gitignore` 屏蔽）。
 
 ---
 
@@ -102,6 +103,12 @@ forge script script/Deploy.s.sol --rpc-url $env:RPC_URL --private-key $env:PRIVA
 NEXT_PUBLIC_PROOF_REGISTRY=0x...
 NEXT_PUBLIC_BADGE_SBT=0x...
 ```
+> 已部署（Sepolia，2026-01-30）可直接用：
+```
+NEXT_PUBLIC_PROOF_REGISTRY=0x7F171D20e3eF1Dc28699059C006D156B87a71956
+NEXT_PUBLIC_BADGE_SBT=0x40f30aA883Ac687fdE1cE946060863EbA03DB78C
+```
+> 如果重新部署，请覆盖为新地址。
 4) 重启前端，进入 `/daily/1` 后点击“上链提交”。
 
 ---

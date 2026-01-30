@@ -35,6 +35,14 @@ def _require_address(addr: str) -> str:
     return _lower_address(addr)
 
 
+async def _run_graph(agent, initial_state: dict):
+    """Invoke Spoon graph with explicit initial state (GraphAgent.run doesn't accept state)."""
+    result = await agent.graph.invoke(initial_state)
+    if isinstance(result, dict) and "output" in result:
+        return result["output"]
+    return result
+
+
 @router.get("/health", response_model=HealthResponse)
 def health():
     return {"status": "ok", "version": settings.version}
@@ -157,10 +165,8 @@ async def checkin(payload: CheckinRequest, session: Session = Depends(get_sessio
         "text": payload.text,
         "imageUrl": payload.imageUrl,
     }
-    # GraphAgent in spoon_ai.agents.graph_agent takes initial_state via instance field
-    agent.initial_state = graph_state
-    output = await agent.run()
-    data = json.loads(output)
+    output = await _run_graph(agent, graph_state)
+    data = json.loads(output) if isinstance(output, str) else output
     return data
 
 
@@ -173,7 +179,7 @@ async def tx_confirm(payload: TxConfirmRequest, session: Session = Depends(get_s
     if log.tx_hash:
         raise HTTPException(status_code=409, detail={"error": {"code": "CONFLICT", "message": "txHash already set", "details": {}}})
     agent = create_agent()
-    agent.initial_state = {
+    initial_state = {
         "db": session,
         "flow": "tx_confirm",
         "address": address,
@@ -182,7 +188,7 @@ async def tx_confirm(payload: TxConfirmRequest, session: Session = Depends(get_s
         "chainId": payload.chainId,
         "contractAddress": payload.contractAddress,
     }
-    await agent.run()
+    await _run_graph(agent, initial_state)
     return {"ok": True}
 
 
@@ -231,12 +237,12 @@ async def report(address: str, range: str, challengeId: int = settings.challenge
         raise HTTPException(status_code=400, detail={"error": {"code": "INVALID_ARGUMENT", "message": "range must be week or final", "details": {}}})
     flow = "report_week" if range == "week" else "report_final"
     agent = create_agent()
-    agent.initial_state = {
+    initial_state = {
         "db": session,
         "flow": flow,
         "address": address,
         "challengeId": challengeId,
     }
-    output = await agent.run()
-    data = json.loads(output)
+    output = await _run_graph(agent, initial_state)
+    data = json.loads(output) if isinstance(output, str) else output
     return data

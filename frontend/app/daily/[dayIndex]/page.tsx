@@ -50,6 +50,10 @@ export default function DailyPage() {
     try {
       setError(null);
       const proofRegistry = process.env.NEXT_PUBLIC_PROOF_REGISTRY as `0x${string}`;
+      if (!proofRegistry || proofRegistry === "0x0000000000000000000000000000000000000000") {
+        setError("合约地址未配置，请检查 frontend/.env.local 并重启前端");
+        return;
+      }
       const hash = result.proofHash as `0x${string}`;
       const tx = await writeContractAsync({
         address: proofRegistry,
