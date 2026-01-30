@@ -1,0 +1,653 @@
+
+2026黑客松
+SpoonOS · 最低技术使用要求（Hackathon）
+为符合 SpoonOS 相关奖金发放条件，参赛项目需至少满足以下要求：
+1，必须基于 SpoonOS 构建
+项目需实际集成并使用 SpoonOS 作为核心系统、运行环境或关键能力层
+不接受仅概念性提及或未实际调用 SpoonOS 的项目
+2，必须使用以下 Agent 体系之一
+React Agent（用于任务执行、交互式决策或流程编排）
+Graph Agent（用于多节点关系建模、状态流转或复杂推理结构）
+3，Agent 使用需与项目核心功能强相关
+Agent 需在项目中承担实际功能角色
+不接受仅做 Demo 展示或边缘调用的形式化使用
+可能会用到的资料：SpoonOS GitHub官网https://xspoonai.github.io/
+  GitHub: SpoonOS Core：https://github.com/XSpoonAi/spoon-core
+Toolkit：https://github.com/XSpoonAi/spoon-toolkit
+Starter：https://github.com/XSpoonAi/spoon-starter
+  HYPERLINK &quot;https://x.com/SpoonOS_ai&quot; SpoonOS - LLM 应用 (LLM Application Track)
+ HYPERLINK &quot;https://github.com/CasualHackathon/SPARK-AI-Hackathon?tab=readme-ov-file&quot; \l &quot;2--spoonos---llm-%E5%BA%94%E7%94%A8-llm-application-track&quot; 
+🎯 核心目标：基于 SpoonOS Framework，结合 React Agent / Graph Agent 调用 LLM，构建以 Agent 为核心的可执行 AI 应用或工作流系统。项目需将 Agent 体系作为核心功能模块，而非仅用于 Demo 或辅助调用。
+💡 开发灵感
+Crypto 投研分析师：自动抓取推特 / 新闻 -&gt; 情绪分析 -&gt; 生成研究日报。
+社区治理 Mod：自动回答 Discord/Telegram 群组中的技术问题，并整理常见 FAQ。
+垂直领域助手：法律文书生成器、代码审计初筛 Agent 等。
+🛠 技术要求
+必须使用  HYPERLINK &quot;https://www.notion.so/SpoonOS-Hackathon-2f1bbd63be8780db8c59c20349715dd5?pvs=21&quot; SpoonOS Framework。
+提交的项目需展示完整的工作流（Input -&gt; Processing -&gt; Output）。
+📝更多信息
+技术文档： HYPERLINK &quot;https://docs.google.com/document/d/1v9tdC_0CABmgsfznJQa_qkWxyYcgW3e5RI9n5gkAEWk/edit?usp=sharing&quot; SpoonOS · 最低技术使用要求（Hackathon）
+Workshop 回放： HYPERLINK &quot;https://www.youtube.com/watch?v=1NDNoiUUyRI&quot; Rick 老师教学 AI 及其基础概念（ SpoonOS框架 ）
+ HYPERLINK &quot;https://xspoonai.github.io/docs/getting-started/installation/&quot; SpoonOS SDK
+
+《活了么？》
+Goal：用 SpoonOS Graph Agent 跑通一个可执行工作流：
+DailyTask -&gt; UserInput -&gt; LLM Reflection -&gt; proofHash -&gt; Onchain Proof -&gt; Badge -&gt; Report
+隐私：内容不上链，只上 proofHash；链上可验证坚持，不泄露原文。
+
+
+MVP边界
+ 必做：
+连接钱包 → 选择挑战（28天）
+每日卡片：显示当天任务 → 用户输入一句话/可选上传图 → Agent 输出结构化反馈（JSON：note/next）
+隐私友好承诺上链：只上链 proofHash（不传内容）
+连续天数统计 + 7/14/28 天 SBT 徽章 mint
+7天/28天报告页（简单可视化也行）
+可选（有余力再做）：
+见证人机制
+自律押金池（0.001 ETH，完成退回，不完成捐给公共池）
+定义（名词表）
+dayIndex：第几天（1..28）
+dateKey：用户时区的自然日字符串（YYYY-MM-DD）
+userInput：用户当天一句话（或图片描述）
+saltHex：随机盐（0x+hex），必须由后端生成并保存（用于幂等、追溯与复现 proofHash）。
+
+ProofBuilder（生成完成证明）
+in：{dateKey, normalizedText, saltHex}
+out：{proofHash}
+proofHash：keccak256(utf8(dateKey + &quot;|&quot; + normalizedText + &quot;|&quot; + saltHex))，其中 saltHex 为后端生成并保存的 0x+hex 随机盐。
+streak：连续打卡天数
+badgeType：7 / 14 / 28（里程碑）
+startDateKey：用户开始挑战的自然日（YYYY-MM-DD，按用户 timezone 计算），由后端在首次开始挑战/首次打卡时写入并固定。
+dayIndex 计算规则（MVP 写死）：dayIndex = diffDays(startDateKey, dateKey) + 1；若 dayIndex &lt; 1：拒绝；若 dayIndex &gt; 28：返回 challenge completed（可提示开启新一轮挑战）
+
+1. 产品闭环
+前端发链上交易，后端负责生成 proofHash、存日志、算 streak，前端上链成功后用 /tx/confirm 回传 txHash
+进入 -&gt; 执行 -&gt; 反馈 -&gt; 里程碑 -&gt; 分享/复用
+Enter：连接钱包 connectWallet() -&gt; 选择挑战 startChallenge(28)
+Daily：展示任务卡 getDailyPrompt(dayIndex) -&gt; 提交输入 POST /checkin
+Feedback：Agent 输出结构化反馈（JSON：note/next）。
+Commit：生成 proofHash -&gt; ProofRegistry.submitProof(dayIndex, proofHash)
+Milestone：streak &gt;= 7/14/28 -&gt; RestartBadgeSBT.mint(badgeType)
+Share：生成海报（只显示徽章+统计，不显示内容）
+
+链上成就：
+连续 7 天：铸造 SBT 徽章（不可转让）
+完成 28 天：升级为“结营徽章”+ 生成一张可分享海报（只显示徽章与统计，不泄露内容）
+可选的“见证人机制”：
+用户可邀请 1 位朋友当见证人（不看内容，只看到你是否完成）
+见证人每天点一次“见证”或自动订阅你是否打卡（链上事件即可）
+
+2. SpoonOS 最低技术要求对齐
+项目必须基于 SpoonOS 构建：核心流程必须跑在 SpoonOS Agent 上
+必须使用 React Agent 或 Graph Agent：本项目用 Graph Agent
+Agent 必须承担核心功能： 
+DailyPrompt 生成任务卡
+Reflection 输出结构化反馈（JSON：note/next），并作为报告与统计的核心输入（非边缘 Demo）。
+WeeklyReport/FinalReport 生成报告
+不是“边缘调用/摆设 demo”
+
+3. 规则（MVP ）
+3.1 打卡频率
+每天最多计 1 次：同日重复提交采用 firstWins（返回第一次生成的 logId/proofHash/reflection）。
+streak 计算以 用户时区自然日为准
+3.2 隐私承诺上链
+链上 不存 userInput
+链上 只存 proofHash
+proofHash 算法： 
+proofHash = keccak256(utf8(dateKey + &quot;|&quot; + normalizedText + &quot;|&quot; + saltHex))，其中 saltHex 为后端生成并保存的 0x+hex 随机盐。
+salt 必须存在（避免短文本被字典猜测）
+3.3 徽章（SBT）
+里程碑：7/14/28
+不可转让：SBT（transfer 禁用/拦截）
+mint 触发：UI/后端判定 streak 后开放按钮（MVP 简化）
+
+4. Graph Agent（节点定义 / I/O）
+目标：节点名固定、I/O 结构化、边关系清晰，便于 SpoonOS 展示完整工作流（Input → Processing → Output）。 说明：主闭环不依赖“自由聊天”。链上交易默认采用 前端发交易，后端负责 proofHash、进度状态与报告。
+
+4.1 总体工作流（Graph 边关系）
+START → DailyPrompt → UserInput
+UserInput → Reflection（并行：生成反馈，给用户展示）
+UserInput → ProofBuilder → OnchainSubmit → TxConfirm → ProgressUpdate → BadgeCheck
+ProgressUpdate → WeeklyReport / FinalReport → END（用户查看或到达里程碑触发）
+条件路由
+TxConfirm：仅在“前端发交易模式”启用（MVP 默认启用）
+WeeklyReport/FinalReport：按 range=week|final 或 dayIndex==7/28 触发
+
+4.2 节点定义（固定节点名 + I/O）
+1) DailyPrompt（每日引导）
+in：{dayIndex, timezone?}
+out：{title, instruction, hint?}
+规则
+任务来源：tasks.json（MVP）
+instruction 建议 ≤ 30 字；hint ≤ 20 字（可选）
+
+2) UserInput（用户输入规范化）
+in：{text?, imageUrl?}
+out：{normalizedText, imageDesc?}
+规则
+normalizedText：去噪/截断/统一格式（用于后续 LLM 与 proof）
+imageDesc：MVP 可不做 OCR，建议让用户补一句描述
+
+3) Reflection（LLM 节点：反馈生成）
+in：{task, normalizedText}
+out（推荐）：{note, next}
+note：短评（≤ 50 字，口语、具体，避免套话）
+next：下一步（≤ 30 字，1 个动作，10 分钟内可开始）
+规则（必须）
+只输出 JSON，不得夹带 Markdown/解释文字
+解析失败必须有兜底模板（保证前端不崩）
+
+4) ProofBuilder（生成完成证明）
+in：{dateKey, normalizedText, salt}
+out：{proofHash}
+规则
+proofHash = keccak256(utf8(dateKey + &quot;|&quot; + normalizedText + &quot;|&quot; + saltHex))其中 saltHex 为后端生成并保存的 0x+hex 随机盐。
+salt 必须由后端生成并保存（用于一致性/追溯）
+幂等策略：同一 address + challengeId + dateKey 重复提交时，返回已有 proofHash（firstWins）
+
+5) OnchainSubmit（上链提交 / 工具节点）
+in：{dayIndex, proofHash}
+out（前端发交易模式）：{submitHint}
+submitHint 示例：合约方法名、参数、合约地址（或可为空，由前端直接调用）
+out（后端代发模式，可选）：{txHash}
+说明
+MVP 默认：前端发交易，因此本节点不一定产出 txHash
+
+6) TxConfirm（交易回传确认，前端发交易必备）
+in：{address, dateKey, dayIndex, txHash, chainId, contractAddress}
+out：{txStatus}（如 SUBMITTED / CONFIRMED）
+side effect
+写回 DailyLog.txHash/status（MVP 可不查链确认，仅标记 SUBMITTED）
+
+7) ProgressUpdate（状态节点：写库 + 计算 streak）
+in：{address, dateKey, dayIndex, proofHash, txHash?}
+out：{streak, completedDays, milestoneEligible}
+milestoneEligible：0 | 7 | 14 | 28
+side effect
+Upsert DailyLog（或更新）
+更新 UserProgress：streak/lastDateKey/lastDayIndex
+
+8) BadgeCheck（里程碑判断）
+in：{address, streak, badgesMinted}
+out：{shouldMint, badgeType?}
+badgeType：&quot;Restart Week 1&quot; | &quot;Restart Halfway&quot; | &quot;Restart Completed&quot;
+说明
+Mint 可由前端按钮触发（更符合真实钱包流程）
+后端仅判断资格并返回建议状态
+
+9) WeeklyReport / FinalReport（总结报告）
+in：{logs[]}（仅使用 reflection/统计，不使用 raw input）
+out：{reportText, chartData}
+规则
+报告生成可模板化（MVP）或 LLM 汇总（加分）
+chartData 用于前端可视化（打卡日历、关键词等）
+
+4.3 关键工程约束（必须写死）
+A. 幂等与唯一性
+UNIQUE(address, challengeId, dateKey)
+重复 checkin：返回原 logId/proofHash，并设置 alreadyCheckedIn=true
+B. 隐私策略
+raw input 默认不存；如存需截断/脱敏
+报告仅用 reflection/统计，不暴露用户原文
+C. 容错兜底
+Reflection 输出 JSON 解析失败：启用固定兜底（保证前端渲染稳定）
+链上回传缺失：允许 DailyLog.status=CREATED，待 TxConfirm 补全
+
+4.4 MVP 验收点
+Graph 日志可展示节点流转：DailyPrompt → UserInput → Reflection → ProofBuilder → TxConfirm → ProgressUpdate → BadgeCheck
+链上证据：txHash 可在浏览器查看 / 事件可查
+状态变化：streak 增长、里程碑资格变化、报告可生成
+
+
+
+5. Prompt 规范（强约束）
+5.1 DailyPrompt（模板驱动 ）————待定
+输入：dayIndex，可选 recentSummary（最近 1-3 天摘要）输出格式：只输出 JSON，不得包含 Markdown、解释文本、换行以外内容。
+输出 JSON（必须字段）
+title：string，中文，&lt;= 16 字
+instruction：string，中文，&lt;= 30 字，必须是“用户要做的动作”
+hint：string|null，中文，&lt;= 20 字（可为空）
+规则
+任务主体优先来自 tasks.json（保证 28 天一致）
+允许在不改变任务含义的前提下，对 instruction/hint 做轻度改写以贴合用户语气
+禁止出现诊断、说教、辱骂、敏感词引导
+示例（合规输出）
+{&quot;title&quot;:&quot;Day 6 接纳情绪&quot;,&quot;instruction&quot;:&quot;写下今天最强烈的情绪，不评判。&quot;,&quot;hint&quot;:&quot;用“我感到___，因为___”。&quot;}
+5.2 Reflection（固定反馈）————待定
+5.2 Reflection（固定反馈，MVP 统一为 note/next）
+输入：task + normalizedText
+输出格式：只输出 JSON，不得包含 Markdown、解释文本、额外字段。
+
+输出 JSON（必须且仅有字段）
+note：string，&lt;= 50 字。短评，口语、具体，避免套话与说教。
+next：string，&lt;= 30 字。只给 1 个“今天能做”的动作，10 分钟内可开始。
+
+next 规则（必须满足）
+只给 1 个建议
+具体、可在 10 分钟内开始
+避免口号：禁止“加油/相信自己/要努力”
+禁止医疗/心理诊断与用药建议
+禁止高风险行为引导
+
+示例（合规输出）
+{&quot;note&quot;:&quot;你今天确实很累，但还是把这一步做完了。&quot;,&quot;next&quot;:&quot;现在用1分钟写下：我最想保住的边界是__。&quot;}
+5.3 容错
+如果解析 JSON 失败：尝试从文本中提取 JSON 子串再解析
+仍失败：返回固定失败模板，确保前端正常运行
+所有输出字段强制截断到字数上限
+
+6. 合约设计（MVP）
+6.1 ProofRegistry.sol
+状态：
+mapping(address =&gt; mapping(uint16 =&gt; bytes32)) proofs;
+接口：
+submitProof(uint16 dayIndex, bytes32 proofHash) external;
+getProof(address user, uint16 dayIndex) external view returns (bytes32);
+事件：
+event ProofSubmitted(address indexed user, uint16 indexed dayIndex, bytes32 proofHash);
+约束（可选，MVP 可不加）
+dayIndex 表示“挑战内第几天（1..28）”，由后端根据 startDateKey 与 dateKey 计算并保持一致。
+同一用户同一 dayIndex 只允许提交一次：require(proofs[msg.sender][dayIndex] == bytes32(0));
+不允许覆盖（防止篡改完成证明）。
+
+6.2 RestartBadgeSBT.sol（不可转让）
+目标：
+mint(badgeType)：7/14/28 三档
+禁止 transfer（SBT）
+状态
+mapping(address =&gt; uint8) public userBadgeType;：记录用户持有的最高勋章档位（1=7天, 2=14天, 3=28天）。
+（MVP）不依赖押金池合约；徽章铸造只依赖 streak/资格判断与前端触发 mint。
+IRestartStaking public stakingContract;：关联的质押合约地
+接口：
+mint(address user, uint8 badgeType) external;：
+badgeOf(address user) external view returns (uint8);（可选）
+实现建议：
+ERC721/1155 都可（MVP 简单就 ERC721）
+transfer 限制：重写 _beforeTokenTransfer 或直接 revert transferFrom
+事件：
+event BadgeMinted(address indexed user, uint8 indexed badgeType, uint256 tokenId);
+
+
+6.3 RestartStaking.sol 设计方案（Optional，不进入 MVP）这个押金池好像不在MVP里实现
+状态变量
+uint256 public constant STAKE_AMOUNT = 0.001 ether;：固定质押金额。
+mapping(address =&gt; bool) public hasActiveStake;：记录用户当前是否有正在进行的质押。
+address public immutable sbtContract;：关联的 SBT 合约地址，用于核实挑战完成情况。
+核心接口
+stake() external payable;
+逻辑：检查 msg.value == 0.001 ether 且用户当前未在质押状态。
+约束：一旦质押，该地址在 ProofRegistry 中的打卡才被视为有效（可在 Registry 中引用此合约状态）。
+claimRefund() external;
+逻辑：用户完成 28 天挑战并获得最高等级 SBT 后，调用此函数取回 0.001 ETH。
+校验：调用 RestartBadgeSBT.badgeOf(msg.sender)，确认其 badgeType 已达到 28 天档位（假设为类型 3）。
+emergencyForfeit() external onlyOwner;（可选）
+逻辑：用于清理长期未完成挑战且放弃打卡的沉淀资金，可转入国库或作为协议收入。
+
+7. 后端（API + 数据结构）
+数据库选择：SQLite
+7.1 表结构（MVP）
+UserProgress
+字段名
+类型(建议)
+允许空
+主键/索引
+默认值
+说明
+address
+varchar(42)
+否
+PK
+
+EVM 地址（建议全小写存）
+display_name
+varchar(32)
+是
+idx(可选)
+NULL
+展示名；为空时前端用 0xabc... 缩写显示
+avatar_url
+varchar(512)
+是
+
+NULL
+头像 URL（可为空）
+timezone
+varchar(64)
+否
+
+&quot;Asia/Shanghai&quot;
+IANA 时区
+challenge_id
+int
+否
+idx(可选)
+1
+方便未来支持多挑战
+start_date_key
+char(10)
+否
+
+
+YYYY-MM-DD（按时区）
+streak
+int
+否
+
+0
+连续天数
+last_date_key
+char(10)
+是
+
+
+最近一次打卡的 YYYY-MM-DD
+last_day_index
+int
+是
+
+
+最近一次打卡的 dayIndex
+badges_minted
+json / text
+否
+
+{}
+例如：{&quot;7&quot;:true,&quot;14&quot;:false,&quot;28&quot;:false}
+created_at
+timestamp
+否
+
+now()
+创建时间
+updated_at
+timestamp
+否
+
+now()
+更新时间
+
+约束：
+address 全小写存储（应用层规范）
+timezone 应在“开始挑战”时固定
+start_date_key应在“开始挑战/首次打卡”时固定
+DailyLog
+字段名
+类型(建议)
+允许空
+主键/索引
+默认值
+说明
+id
+uuid / varchar(36)
+否
+PK
+uuid()
+日志主键
+address
+varchar(42)
+否
+IDX
+
+关联用户
+challenge_id
+int
+否
+
+1
+同一用户不同挑战区分
+day_index
+int
+否
+idx(可选)
+
+1..28（建议后端根据日期计算）
+date_key
+char(10)
+否
+IDX
+
+YYYY-MM-DD（按用户时区）
+input_hash
+char(64)
+是
+
+
+sha256(normalized_text)（可选，用于调试/去重）
+normalized_text
+text
+是
+
+
+可不存原文；存也建议脱敏/截断
+reflection
+json / text
+否
+
+
+建议 JSON：{&quot;note&quot;: &quot;...&quot;, &quot;next&quot;: &quot;...&quot;} 或三字段版
+salt
+varchar(128)
+否
+
+
+建议后端存（hex/base64）
+proof_hash
+char(66)
+否
+
+
+0x + 64 hex（bytes32）
+status
+varchar(24)
+否
+idx(可选)
+&quot;CREATED&quot;
+CREATED / SUBMITTED / CONFIRMED
+chain_id
+int
+是
+
+
+例如 11155111
+contract_address
+varchar(42)
+是
+
+
+ProofRegistry 地址（重部署不丢记录）
+tx_hash
+char(66)
+是
+
+
+前端上链后回传
+block_number
+int
+是
+
+
+可选：确认时填
+created_at
+timestamp
+否
+
+now()
+创建时间
+约束：
+UNIQUE(address, challenge_id, date_key) 同一个用户同一个挑战同一天只会有一条记录
+关系与查询（写接口用）
+UserProgress.address 1 — N DailyLog.address
+/progress 常用查询：
+UserProgress 取 streak/last_date_key/badges_minted
+DailyLog 按 address + challenge_id 查 day_index 列表
+/report 常用查询：
+DailyLog 过滤最近 7 天/全部 28 天（按 date_key 排序）
+
+7.2 API
+Base URL
+生产：https://api.alive28.xyz（示例）
+本地：http://localhost:8000
+Content-Type
+请求/响应：application/json; charset=utf-8
+通用字段规范
+address：EVM 地址字符串（后端统一转小写存储）
+timezone：IANA 时区（如 Asia/Shanghai、America/Los_Angeles）
+dateKey：按用户时区计算的自然日，格式 YYYY-MM-DD
+challengeId：挑战/批次标识（MVP 默认固定为 1）
+幂等规则：同一用户同一挑战同一天只允许 1 条日志（建议 UNIQUE(address, challengeId, dateKey)）；重复打卡返回同一条记录并标记 alreadyCheckedIn=true
+统一错误返回格式
+JSON{  &quot;error&quot;: {    &quot;code&quot;: &quot;INVALID_ARGUMENT&quot;,    &quot;message&quot;: &quot;dayIndex must be between 1 and 28&quot;,    &quot;details&quot;: {}  }}
+常见 code：INVALID_ARGUMENT / NOT_FOUND / CONFLICT / INTERNAL / RATE_LIMITED（可选）
+
+7.1 Health
+GET /health用于部署检查与联调。
+Response 200
+JSON{&quot;status&quot;:&quot;ok&quot;,&quot;version&quot;:&quot;mvp-1.0.0&quot;}
+
+7.2 Prompt（任务卡）
+GET /dailyPrompt获取当天任务卡（MVP：从 tasks.json 读取）。
+Query
+dayIndex（必填，int，1..28）
+timezone（可选，string，默认 Asia/Shanghai）
+Response 200
+JSON{  &quot;challengeId&quot;: 1,  &quot;dayIndex&quot;: 6,  &quot;title&quot;: &quot;Day 6 接纳情绪&quot;,  &quot;instruction&quot;: &quot;记录今天最强烈的情绪，不评判。&quot;,  &quot;hint&quot;: &quot;写“我感到___，因为___”。&quot;}
+Errors
+400 INVALID_ARGUMENT：dayIndex 超范围
+
+7.3 用户资料（可选但建议）
+GET /user获取用户资料（展示名/头像/时区）。
+Query
+address（必填）
+Response 200
+JSON{  &quot;address&quot;:&quot;0xabc...&quot;,  &quot;displayName&quot;:&quot;小明&quot;,  &quot;avatarUrl&quot;:null,  &quot;timezone&quot;:&quot;Asia/Shanghai&quot;,  &quot;challengeId&quot;:1,  &quot;createdAt&quot;:&quot;2026-01-29T10:00:00Z&quot;,  &quot;updatedAt&quot;:&quot;2026-01-29T10:10:00Z&quot;}
+POST /user更新用户资料（MVP 不做鉴权；更严谨可加签名验证）。
+Body
+JSON{  &quot;address&quot;:&quot;0xabc...&quot;,  &quot;displayName&quot;:&quot;小明&quot;,  &quot;avatarUrl&quot;:&quot;https://.../avatar.png&quot;,  &quot;timezone&quot;:&quot;Asia/Shanghai&quot;}
+Response 200
+JSON{&quot;ok&quot;:true}
+Errors
+400 INVALID_ARGUMENT
+鉴权说明（MVP-0 / MVP-1）
+MVP-0（默认）：不做鉴权
+服务端仅以 address 作为用户标识，不验证消息签名；
+风险：任何人可以伪造任意 address 提交打卡（仅用于 hackathon demo 可接受）。
+MVP-1（可选增强）：基于钱包签名校验
+新增 GET /auth/nonce?address=0x... 返回 nonce
+POST /auth/verify：{address, nonce, signature} 校验通过后返回短期 token（或 session）
+POST /checkin 与 POST /user 在 Header 带 Authorization: Bearer &lt;token&gt;（或直接每次带 signature 也可）
+
+7.4 Check-in（打卡主链路）
+POST /checkin打卡：生成反馈 + proofHash + 更新 streak（后端不负责上链）。
+Body
+JSON{  &quot;address&quot;:&quot;0xabc...&quot;,  &quot;timezone&quot;:&quot;Asia/Shanghai&quot;,  &quot;text&quot;:&quot;今天有点累，但还是完成了任务。&quot;,  &quot;imageUrl&quot;:null}
+Response 200
+JSON{  &quot;logId&quot;:&quot;b5a1f7c7-9df7-4f31-8b3b-3c7a0a9c3e1d&quot;,  &quot;challengeId&quot;:1,  &quot;dateKey&quot;:&quot;2026-01-29&quot;,  &quot;dayIndex&quot;:6,  &quot;reflection&quot;:{    &quot;note&quot;:&quot;你今天确实很累，但还把这一步做完了。&quot;,    &quot;next&quot;:&quot;现在用1分钟写下：我最想保住的边界是__。&quot;  },  &quot;proofHash&quot;:&quot;0x1234...abcd&quot;,  &quot;streak&quot;:4,  &quot;milestoneEligible&quot;:0,  &quot;alreadyCheckedIn&quot;:false}
+字段说明
+reflection：建议采用去机械化结构 {note, next}；如仍用三字段则固定 {empathy, summary, action}（必须严格 JSON）
+proofHash：keccak256(utf8(dateKey + &quot;|&quot; + normalizedText + &quot;|&quot; + saltHex))，其中 saltHex 为后端生成并保存的 0x+hex 随机盐。
+dayIndex：建议后端依据 startDateKey + dateKey 自动计算并返回；如前端传 dayIndex，后端需校验一致性
+Errors
+400 INVALID_ARGUMENT：参数格式错误、文本超长等
+409 CONFLICT：唯一约束冲突（若未做 firstWins 查询返回）
+
+7.5 Onchain Tx 回传（前端发交易模式必备）
+POST /tx/confirm前端调用合约提交 proof 后，把 txHash 回传给后端，用于展示与对账。
+Body
+JSON{  &quot;logId&quot;:&quot;b5a1f7c7-9df7-4f31-8b3b-3c7a0a9c3e1d&quot;,  &quot;address&quot;:&quot;0xabc...&quot;,  &quot;txHash&quot;:&quot;0xdeadbeef...&quot;,  &quot;chainId&quot;:11155111,  &quot;contractAddress&quot;:&quot;0xproofregistry...&quot;}
+Response 200
+JSON{&quot;ok&quot;:true}
+Errors
+404 NOT_FOUND：logId 不存在
+409 CONFLICT：该日志已绑定 txHash
+400 INVALID_ARGUMENT：txHash 格式错误
+
+7.6 进度查询
+GET /progress获取用户进度（进度页/徽章页）。
+Query
+address（必填）
+challengeId（可选，默认 1）
+Response 200
+JSON{  &quot;address&quot;:&quot;0xabc...&quot;,  &quot;challengeId&quot;:1,  &quot;timezone&quot;:&quot;Asia/Shanghai&quot;,  &quot;streak&quot;:4,  &quot;lastDateKey&quot;:&quot;2026-01-29&quot;,  &quot;todayCheckedIn&quot;:true,  &quot;completedDays&quot;:[1,2,3,4,6],  &quot;milestonesEligible&quot;:{    &quot;eligible7&quot;:false,    &quot;eligible14&quot;:false,    &quot;eligible28&quot;:false  },  &quot;badgesMinted&quot;:{    &quot;minted7&quot;:false,    &quot;minted14&quot;:false,    &quot;minted28&quot;:false  }}
+Errors
+404 NOT_FOUND：用户不存在（建议首次 checkin 自动创建）
+
+7.7 报告（周报/结营）
+GET /report生成报告（MVP：可模板拼接；加分：LLM 汇总）。
+Query
+address（必填）
+range（必填）：week | final
+challengeId（可选，默认 1）
+Response 200
+JSON{  &quot;address&quot;:&quot;0xabc...&quot;,  &quot;challengeId&quot;:1,  &quot;range&quot;:&quot;week&quot;,  &quot;from&quot;:&quot;2026-01-23&quot;,  &quot;to&quot;:&quot;2026-01-29&quot;,  &quot;reportText&quot;:&quot;这一周你完成了4天打卡，最常出现的状态是“疲惫但仍在推进”…&quot;,  &quot;chartData&quot;:{    &quot;checkins&quot;:[      {&quot;dateKey&quot;:&quot;2026-01-23&quot;,&quot;done&quot;:true},      {&quot;dateKey&quot;:&quot;2026-01-24&quot;,&quot;done&quot;:true},      {&quot;dateKey&quot;:&quot;2026-01-25&quot;,&quot;done&quot;:false}    ],    &quot;keywords&quot;:[&quot;疲惫&quot;,&quot;坚持&quot;,&quot;边界&quot;]  }}
+Errors
+404 NOT_FOUND：无日志数据
+Notes
+建议报告只基于 reflection 与统计，不使用 raw input（更隐私友好）
+
+7.8 字段规范补充（MVP）
+Reflection 推荐结构（去机械化）
+JSON{&quot;note&quot;:&quot;短评（&lt;=50字）&quot;,&quot;next&quot;:&quot;下一步（1个动作，&lt;=30字，10分钟内可开始）&quot;}
+Hash 字段格式
+proofHash：0x + 64 hex（bytes32）
+txHash：0x + 64 hex
+
+7.9 端到端调用示例（前端视角）
+获取任务卡：GET /dailyPrompt?dayIndex=6
+打卡：POST /checkin → 得到 logId + proofHash + reflection
+上链：contract.submitProof(dayIndex, proofHash) → 得到 txHash
+回传 tx：POST /tx/confirm
+查询进度：GET /progress?address=...
+获取报告：GET /report?address=...&amp;range=week
+
+8. 前端（页面最小集合）
+Page 1：/enter
+connectWallet()
+startChallenge(28)
+显示规则：内容不上链，仅 proofHash
+Page 2：/daily/:dayIndex
+显示 DailyPrompt
+输入框/上传图
+点击 Checkin： 
+展示 Reflection（note/next 两段）
+展示 proofHash（折叠）
+展示 txHash + explorer 链接
+更新 streak
+Page 3：/progress
+streak、完成进度条（1..28）
+徽章状态（7/14/28）
+可 mint 时显示按钮 mint(badgeType)
+Page 4：/report
+周报/结营报告（文本 + 简单图）
+分享海报（只统计/徽章，不展示原文）
+
+9. 技术栈
+技术栈（MVP 推荐）
+后端
+Python 3.11
+FastAPI（REST API）
+SpoonOS / spoon_ai（Graph Agent：StateGraph + GraphAgent）
+SQLite（本地文件数据库，MVP 使用）
+SQLModel + SQLAlchemy（ORM）
+Alembic（数据库迁移）
+eth-hash + eth-utils（keccak256 / hex 编码等工具）
+python-dotenv（环境变量加载）
+uvicorn（ASGI 运行）
+合约
+Solidity ^0.8.x
+Foundry（编译/测试/部署）
+OpenZeppelin Contracts（ERC721，用于 SBT 改造）
+Sepolia（目标链）
+前端
+Next.js + React + TypeScript
+wagmi + viem
+UI：TailwindCSS
+图表：ECharts
+基础设施（可选）
+Vercel（前端部署）
+Render（后端部署）
+
+
+
+
+

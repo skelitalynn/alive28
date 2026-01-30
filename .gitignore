@@ -1,0 +1,31 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
+# Environment files (keep examples)
+.env
+.env.*
+!.env.example
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+
+# Foundry
+out/
+cache/
+broadcast/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

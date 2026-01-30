@@ -1,0 +1,10 @@
+﻿fastapi
+uvicorn[standard]
+sqlmodel
+python-dotenv
+eth-utils
+eth-hash
+aiofiles
+spoon-ai-sdk
+pydantic
+pytest

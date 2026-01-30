@@ -1,0 +1,109 @@
+﻿# 项目启动文档（给组员）
+
+> 目标：快速跑通本地 MVP（不上链）。
+> 如需上链流程，见本文末尾“上链可选步骤”。
+
+## 目录结构
+- `backend/` FastAPI + SQLModel + SpoonOS GraphAgent
+- `frontend/` Next.js + wagmi/viem + Tailwind + ECharts
+- `contracts/` Foundry 合约（上链可选）
+
+---
+
+## 1. 启动后端
+> 后端使用 **项目根目录** 的 `.venv`
+
+### 1.0 进入虚拟环境（可选但推荐）
+```powershell
+cd .
+.\.venv\Scripts\Activate.ps1
+```
+如遇 PowerShell 执行策略限制，可用：
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+```powershell
+cd backend
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+验证：
+```
+http://127.0.0.1:8000/health
+```
+预期返回：
+```json
+{"status":"ok","version":"mvp-1.0.0"}
+```
+
+> 若未创建 `.venv`：
+```powershell
+cd .
+python -m venv .venv
+.\.venv\Scripts\pip.exe install -r backend\requirements.txt
+```
+
+> 后端环境变量：`backend/.env`
+- 从 `backend/.env.example` 复制并填好 `DEEPSEEK_API_KEY`。
+
+---
+
+## 2. 启动前端
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+打开：
+```
+http://localhost:3000
+```
+
+> 前端环境变量：`frontend/.env.local`
+- 从 `frontend/.env.example` 复制
+- 确认：
+```
+NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
+```
+
+---
+
+## 3. 本地 MVP 流程（不上链）
+1) 打开 `http://localhost:3000/enter`
+2) 进入 `/daily/1`
+3) 输入一句话 → 点击“打卡并生成 proofHash”
+4) **不要点击“上链提交”**（上链是可选）
+5) 打开 `/progress` 查看 streak
+6) 打开 `/report` 查看报告
+
+---
+
+## 4. 常见问题排查
+- **Failed to fetch**：后端没跑 / 前端没重启 / API 地址错误
+- **/dailyPrompt 500**：多半是 tasks.json BOM 或后端未重启
+- **/checkin 500**：看后端日志（GraphAgent/LLM 配置问题）
+
+---
+
+## 5. 上链可选步骤（需要 Foundry + RPC）
+1) 安装 Foundry（Windows 需 `foundryup.exe`）
+2) 在 `contracts/`：
+```powershell
+forge install OpenZeppelin/openzeppelin-contracts
+copy .env.example .env
+# 填 PRIVATE_KEY 和 RPC_URL
+forge script script/Deploy.s.sol --rpc-url $env:RPC_URL --private-key $env:PRIVATE_KEY --broadcast
+```
+3) 把合约地址写入前端 `.env.local`：
+```
+NEXT_PUBLIC_PROOF_REGISTRY=0x...
+NEXT_PUBLIC_BADGE_SBT=0x...
+```
+4) 重启前端，进入 `/daily/1` 后点击“上链提交”。
+
+---
+
+如需接口测试，可参考 `docs/testing.md`（含 Postman 示例）。
