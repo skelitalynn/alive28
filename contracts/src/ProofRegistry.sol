@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 contract ProofRegistry {
     mapping(address => mapping(uint16 => bytes32)) private proofs;
@@ -7,6 +7,7 @@ contract ProofRegistry {
     event ProofSubmitted(address indexed user, uint16 indexed dayIndex, bytes32 proofHash);
 
     function submitProof(uint16 dayIndex, bytes32 proofHash) external {
+        require(dayIndex >= 1 && dayIndex <= 28, "invalid dayIndex");
         require(proofs[msg.sender][dayIndex] == bytes32(0), "already submitted");
         proofs[msg.sender][dayIndex] = proofHash;
         emit ProofSubmitted(msg.sender, dayIndex, proofHash);

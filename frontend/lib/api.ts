@@ -26,6 +26,16 @@ export async function confirmTx(payload: any) {
   return res.json();
 }
 
+export async function confirmSbt(payload: any) {
+  const res = await fetch(`${API_BASE}/sbt/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error("sbt confirm failed");
+  return res.json();
+}
+
 export async function getProgress(address: string) {
   const res = await fetch(`${API_BASE}/progress?address=${address}`);
   if (!res.ok) throw new Error("progress failed");

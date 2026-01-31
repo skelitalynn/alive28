@@ -1,7 +1,8 @@
-﻿from typing import Optional
+﻿from typing import Optional, Dict
 from sqlmodel import SQLModel, Field, Column, JSON
 from sqlalchemy import UniqueConstraint
 from datetime import datetime
+
 
 class UserProgress(SQLModel, table=True):
     address: str = Field(primary_key=True, max_length=42, index=True)
@@ -13,9 +14,13 @@ class UserProgress(SQLModel, table=True):
     streak: int = Field(default=0)
     last_date_key: Optional[str] = Field(default=None, max_length=10)
     last_day_index: Optional[int] = Field(default=None)
-    badges_minted: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    day_mint_count: int = Field(default=0)
+    final_minted: bool = Field(default=False)
+    final_sbt_tx_hash: Optional[str] = Field(default=None, max_length=66)
+    milestones: Dict[str, Optional[str]] = Field(default_factory=dict, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class DailyLog(SQLModel, table=True):
     __table_args__ = (
@@ -29,11 +34,12 @@ class DailyLog(SQLModel, table=True):
     input_hash: Optional[str] = Field(default=None, max_length=64)
     normalized_text: Optional[str] = Field(default=None)
     reflection: dict = Field(sa_column=Column(JSON))
-    salt: str = Field(max_length=128)
+    salt_hex: str = Field(max_length=128)
     proof_hash: str = Field(max_length=66)
     status: str = Field(default="CREATED", max_length=24, index=True)
     chain_id: Optional[int] = Field(default=None)
     contract_address: Optional[str] = Field(default=None, max_length=42)
     tx_hash: Optional[str] = Field(default=None, max_length=66)
+    day_sbt_tx_hash: Optional[str] = Field(default=None, max_length=66)
     block_number: Optional[int] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)

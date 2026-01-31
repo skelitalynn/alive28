@@ -30,7 +30,29 @@ def build_graph() -> StateGraph:
     graph.add_node("FinalReport", final_report_node)
 
     graph.set_entry_point("DailyPrompt")
-    graph.add_edge("DailyPrompt", "UserInput")
+
+    def after_daily_prompt(state):
+        flow = state.get("flow")
+        if flow == "tx_confirm":
+            return "tx"
+        if flow == "report_week":
+            return "week"
+        if flow == "report_final":
+            return "final"
+        if flow == "progress":
+            return "progress"
+        if state.get("alreadyCheckedIn"):
+            return "progress"
+        return "input"
+
+    graph.add_conditional_edges("DailyPrompt", after_daily_prompt, {
+        "tx": "TxConfirm",
+        "week": "WeeklyReport",
+        "final": "FinalReport",
+        "progress": "ProgressUpdate",
+        "input": "UserInput",
+    })
+
     graph.add_edge("UserInput", "Reflection")
     graph.add_edge("Reflection", "ProofBuilder")
     graph.add_edge("ProofBuilder", "OnchainSubmit")

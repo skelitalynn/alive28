@@ -114,3 +114,39 @@ NEXT_PUBLIC_BADGE_SBT=0x40f30aA883Ac687fdE1cE946060863EbA03DB78C
 ---
 
 如需接口测试，可参考 `docs/testing.md`（含 Postman 示例）。
+
+数据库迁移方案（SQLite MVP）
+
+简单方案（推荐）：删除本地数据库文件并重建表
+停止后端
+删除 alive.db
+重新启动后端（会自动 create_all）
+可选 Alembic（如果你后续要保留数据）：新增迁移脚本，增加/改名字段
+UserProgress：新增 day_mint_count, final_minted, final_sbt_tx_hash；删除 badges_minted
+DailyLog：新增 salt_hex, day_sbt_tx_hash；删除 salt
+本地跑通步骤（含命令）
+
+后端启动
+根目录激活虚拟环境：Activate.ps1
+安装依赖：requirements.txt
+启动：python -m uvicorn backend.app.main:app --reload
+合约部署（Foundry）
+cd contracts
+forge build
+设置环境：$env:RPC_URL=...、$env:PRIVATE_KEY=...、$env:SBT_BASE_URI=...
+部署：Deploy.s.sol --rpc-url $env:RPC_URL --private-key $env:PRIVATE_KEY --broadcast
+前端启动
+cd frontend
+npm install
+配置 .env.local：NEXT_PUBLIC_API_BASE、NEXT_PUBLIC_PROOF_REGISTRY、NEXT_PUBLIC_BADGE_SBT
+npm run dev
+端到端（一次完整链路）
+Daily 页：POST /checkin（前端按钮）
+调用合约 submitProof(dayIndex, proofHash)
+POST /tx/confirm
+调用合约 mintDay(dayIndex)
+POST /sbt/confirm (type=DAY)
+GET /progress
+当 shouldComposeFinal=true 时调用 composeFinal()
+POST /sbt/confirm (type=FINAL)
+GET /report?range=final

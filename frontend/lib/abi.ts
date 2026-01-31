@@ -14,12 +14,18 @@ export const ProofRegistryABI = [
 export const RestartBadgeSBTABI = [
   {
     "type": "function",
-    "name": "mint",
+    "name": "mintDay",
     "stateMutability": "nonpayable",
     "inputs": [
-      { "name": "user", "type": "address" },
-      { "name": "badgeType", "type": "uint8" }
+      { "name": "dayIndex", "type": "uint8" }
     ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "composeFinal",
+    "stateMutability": "nonpayable",
+    "inputs": [],
     "outputs": []
   }
 ];

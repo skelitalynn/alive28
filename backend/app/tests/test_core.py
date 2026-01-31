@@ -32,7 +32,7 @@ def test_dailylog_idempotent_unique():
             day_index=1,
             date_key="2026-01-29",
             reflection={"note": "n", "next": "x"},
-            salt="0x1",
+            salt_hex="0x1",
             proof_hash="0x" + "0" * 64,
             status="CREATED",
         )
@@ -46,7 +46,7 @@ def test_dailylog_idempotent_unique():
             day_index=1,
             date_key="2026-01-29",
             reflection={"note": "n", "next": "x"},
-            salt="0x2",
+            salt_hex="0x2",
             proof_hash="0x" + "1" * 64,
             status="CREATED",
         )
