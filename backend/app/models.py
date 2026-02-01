@@ -1,4 +1,4 @@
-﻿from typing import Optional, Dict
+from typing import Optional, Dict
 from sqlmodel import SQLModel, Field, Column, JSON
 from sqlalchemy import UniqueConstraint
 from datetime import datetime
@@ -43,5 +43,6 @@ class DailyLog(SQLModel, table=True):
     chain_id: Optional[int] = Field(default=None)
     contract_address: Optional[str] = Field(default=None, max_length=42)
     tx_hash: Optional[str] = Field(default=None, max_length=66)
+    day_sbt_tx_hash: Optional[str] = Field(default=None, max_length=66)
     block_number: Optional[int] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)

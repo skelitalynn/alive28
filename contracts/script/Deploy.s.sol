@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import "../src/ProofRegistry.sol";
 import "../src/RestartBadgeSBT.sol";
+import "../src/MilestoneNFT.sol";
 
 contract Deploy is Script {
     function run() external {
@@ -12,9 +13,11 @@ contract Deploy is Script {
         vm.startBroadcast(pk);
         ProofRegistry registry = new ProofRegistry();
         RestartBadgeSBT sbt = new RestartBadgeSBT(address(registry), baseUri);
+        MilestoneNFT milestoneNft = new MilestoneNFT();
         vm.stopBroadcast();
 
         console2.log("ProofRegistry:", address(registry));
         console2.log("RestartBadgeSBT:", address(sbt));
+        console2.log("MilestoneNFT:", address(milestoneNft));
     }
 }

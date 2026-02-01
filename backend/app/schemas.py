@@ -69,6 +69,7 @@ class DailyLogResponse(BaseModel):
     proofHash: str
     status: str
     txHash: Optional[str] = None
+    daySbtTxHash: Optional[str] = None
     createdAt: str
 
 
@@ -103,6 +104,19 @@ class TxConfirmResponse(BaseModel):
     ok: bool
 
 
+class SbtConfirmRequest(BaseModel):
+    address: str
+    type: str  # "DAY" | "FINAL"
+    dayIndex: Optional[int] = None
+    txHash: str
+    chainId: int
+    contractAddress: str
+
+
+class SbtConfirmResponse(BaseModel):
+    ok: bool
+
+
 class MilestoneMintRequest(BaseModel):
     address: str
     milestoneId: int
@@ -119,7 +133,13 @@ class MilestoneMintResponse(BaseModel):
 class ProgressResponse(BaseModel):
     dateKey: str
     streak: int
+    dayMintCount: int = 0
     completedDays: List[int]
+    shouldMintDay: bool = False
+    mintableDayIndex: Optional[int] = None
+    shouldComposeFinal: bool = False
+    finalMinted: bool = False
+    finalSbtTxHash: Optional[str] = None
     milestones: Dict[str, Optional[str]]
     startDateKey: Optional[str] = None
 

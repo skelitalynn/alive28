@@ -96,21 +96,19 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
 ```powershell
 forge install OpenZeppelin/openzeppelin-contracts
 copy .env.example .env
-# 填 PRIVATE_KEY 和 RPC_URL
+# 填 PRIVATE_KEY 和 RPC_URL（可选 SBT_BASE_URI）
 forge script script/Deploy.s.sol --rpc-url $env:RPC_URL --private-key $env:PRIVATE_KEY --broadcast
 ```
+部署后会输出三个地址：**ProofRegistry**、**RestartBadgeSBT**、**MilestoneNFT**。
 3) 把合约地址写入前端 `.env.local`：
 ```
 NEXT_PUBLIC_PROOF_REGISTRY=0x...
 NEXT_PUBLIC_BADGE_SBT=0x...
+NEXT_PUBLIC_MILESTONE_NFT=0x...
 ```
-> 已部署（Sepolia，2026-01-30）可直接用：
-```
-NEXT_PUBLIC_PROOF_REGISTRY=0x7F171D20e3eF1Dc28699059C006D156B87a71956
-NEXT_PUBLIC_BADGE_SBT=0x40f30aA883Ac687fdE1cE946060863EbA03DB78C
-```
-> 如果重新部署，请覆盖为新地址。
-4) 重启前端，进入 `/daily/1` 后点击“上链提交”。
+> 若此前已部署过 ProofRegistry + RestartBadgeSBT，可只部署 MilestoneNFT 并只填 `NEXT_PUBLIC_MILESTONE_NFT`；或重新跑 Deploy 得到三个新地址后全部覆盖。
+4) 后端若已有 `alive.db`，上链需记录 Day SBT：建议删除 `backend/alive.db` 后重启后端以重建表（含 `day_sbt_tx_hash`），或自行执行 `ALTER TABLE dailylog ADD COLUMN day_sbt_tx_hash VARCHAR(66);`。
+5) 重启前端，进入 `/daily/1` 后：打卡 →「保存记录」→「上链提交」→「完成今日」；进度页可查看 dayMintCount、mintableDayIndex；里程碑页可「铸造里程碑 NFT」。
 
 ---
 

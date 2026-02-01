@@ -139,7 +139,8 @@ npm run dev
 | GET | /homeSnapshot | 首页快照（address） |
 | GET | /dailySnapshot | 某日快照（address, dayIndex） |
 | POST | /checkin | 打卡（address, dayIndex, text 等） |
-| POST | /tx/confirm | 上链交易确认 |
+| POST | /tx/confirm | Proof 上链交易确认（写回 DailyLog.tx_hash） |
+| POST | /sbt/confirm | Day/Final SBT 铸造确认（写回 day_sbt_tx_hash 或 final_sbt_tx_hash） |
 | POST | /milestone/mint | 里程碑铸造记录 |
 | GET | /progress | 进度（address） |
 | GET | /report | 周报/结营报告（address, range） |
@@ -156,3 +157,46 @@ npm run dev
 - **DEMO 模式**：后端 `DEMO_MODE=true` 时，前端从 `/health` 读取 `demo_mode`，里程碑仅记录不上链；生产环境关闭 DEMO_MODE，连接钱包时需上链铸造。
 - **里程碑 NFT 图片**：使用 `frontend/public/nft/` 下 `week1.svg`、`week2.svg`、`final.svg`，无需合约即可在里程碑页展示。
 - 更细的产品规则、名词表、Graph 节点定义、合约规范见 **项目文档.md**；本地启动与上链步骤见 **docs/startup.md**。
+
+---
+
+## 上链步骤（生产 / 测试网）
+
+### 1. 部署合约（Foundry）
+
+```bash
+cd contracts
+# 安装依赖（若未安装）
+forge install OpenZeppelin/openzeppelin-contracts
+# 复制 .env.example 为 .env，填写 PRIVATE_KEY、RPC_URL（如 Sepolia）
+cp .env.example .env
+# 可选：SBT_BASE_URI 用于 RestartBadgeSBT 的 tokenURI 前缀
+forge script script/Deploy.s.sol --rpc-url $env:RPC_URL --private-key $env:PRIVATE_KEY --broadcast
+```
+
+部署后会输出三个地址：**ProofRegistry**、**RestartBadgeSBT**、**MilestoneNFT**。
+
+### 2. 配置前端与后端
+
+**前端 `frontend/.env` 或 `.env.local`：**
+
+```
+NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
+NEXT_PUBLIC_CHAIN_ID=11155111
+NEXT_PUBLIC_PROOF_REGISTRY=<ProofRegistry 地址>
+NEXT_PUBLIC_BADGE_SBT=<RestartBadgeSBT 地址>
+NEXT_PUBLIC_MILESTONE_NFT=<MilestoneNFT 地址>
+```
+
+**后端**：关闭 DEMO 模式时设 `DEMO_MODE=false`，前端从 `/health` 读取 `demo_mode` 后，里程碑页会要求上链铸造。
+
+### 3. 数据库（若已有旧库）
+
+后端新增字段 `DailyLog.day_sbt_tx_hash`。若使用已有 `alive.db`，需**删除 `backend/alive.db` 后重启后端**让其重建表，或自行执行 SQL 添加列：`ALTER TABLE dailylog ADD COLUMN day_sbt_tx_hash VARCHAR(66);`。
+
+### 4. 上链流程（用户侧）
+
+1. **每日打卡**：输入感受 → 点击「生成反馈」→ 点击「保存记录」→ 连接钱包后点击「上链提交」→ 前端调用 `ProofRegistry.submitProof(dayIndex, proofHash)` → 成功后 POST `/tx/confirm`。
+2. **完成今日**：在当日已提交 Proof 的前提下，点击「完成今日」→ 前端调用 `RestartBadgeSBT.mintDay(dayIndex)` → 成功后 POST `/sbt/confirm`（type=DAY, dayIndex）。
+3. **结营**：当 28 天 Day SBT 均已铸造后，进度页可触发「结营」→ 前端调用 `RestartBadgeSBT.composeFinal()` → 成功后 POST `/sbt/confirm`（type=FINAL）。
+4. **里程碑 NFT**：达到 7/14/28 天后进入里程碑页，连接钱包点击「铸造里程碑 NFT」→ 前端调用 `MilestoneNFT.mint(to, tokenId, tokenURI)` → 成功后 POST `/milestone/mint` 记录 txHash。
