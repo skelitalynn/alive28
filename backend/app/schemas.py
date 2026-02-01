@@ -68,7 +68,6 @@ class DailyLogResponse(BaseModel):
     proofHash: str
     status: str
     txHash: Optional[str] = None
-    daySbtTxHash: Optional[str] = None
     createdAt: str
 
 
@@ -103,19 +102,6 @@ class TxConfirmResponse(BaseModel):
     ok: bool
 
 
-class SbtConfirmRequest(BaseModel):
-    address: str
-    type: str
-    dayIndex: Optional[int] = None
-    txHash: str
-    chainId: int
-    contractAddress: str
-
-
-class SbtConfirmResponse(BaseModel):
-    ok: bool
-
-
 class MilestoneMintRequest(BaseModel):
     address: str
     milestoneId: int
@@ -132,13 +118,7 @@ class MilestoneMintResponse(BaseModel):
 class ProgressResponse(BaseModel):
     dateKey: str
     streak: int
-    dayMintCount: int
     completedDays: List[int]
-    shouldMintDay: bool
-    mintableDayIndex: Optional[int]
-    shouldComposeFinal: bool
-    finalMinted: bool
-    finalSbtTxHash: Optional[str] = None
     milestones: Dict[str, Optional[str]]
     startDateKey: Optional[str] = None
 
@@ -156,3 +136,28 @@ class MetadataResponse(BaseModel):
     description: str
     image: str
     attributes: List[Dict[str, Any]]
+
+
+class AiReflectionRequest(BaseModel):
+    task: DailyTask
+    userText: str
+    dayIndex: int
+
+
+class AiReflectionResponse(BaseModel):
+    reflection: Reflection
+
+
+class GenerateNftRequest(BaseModel):
+    dayIndex: int
+    taskTitle: Optional[str] = None
+    userText: str
+    reflectionNote: Optional[str] = None
+    reflectionNext: Optional[str] = None
+
+
+class GenerateNftResponse(BaseModel):
+    success: bool
+    image: str
+    dayIndex: int
+    message: str

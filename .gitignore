@@ -11,6 +11,10 @@ __pycache__/
 .env
 .env.*
 !.env.example
+!.env.local.example
+!.env.test.example
+!.env.development.example
+!.env.production.example
 
 # Node / Next.js
 node_modules/

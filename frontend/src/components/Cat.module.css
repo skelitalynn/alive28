@@ -1,0 +1,1103 @@
+.catContainer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 999;
+}
+
+.cat {
+  position: absolute;
+  width: 120px;
+  height: 140px;
+  cursor: pointer;
+  pointer-events: all;
+  transition: left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.4s ease;
+  user-select: none;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.cat:hover {
+  filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.25));
+  transform: scale(1.05);
+}
+
+.cat:active {
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.2));
+}
+
+.cat:focus {
+  outline: none;
+  /* 去除点击时的黑框 */
+}
+
+/* 头部 */
+.head {
+  position: absolute;
+  width: 84px;
+  /* 稍微加大头 */
+  height: 80px;
+  background: linear-gradient(135deg, #8B7355 0%, #6B5344 50%, #5A4535 100%);
+  border-radius: 50% 50% 45% 45%;
+  top: 5px;
+  /* 下移一点 */
+  left: 18px;
+  /* 居中: (120-84)/2 = 18 */
+  z-index: 10;
+  /* 确保头在身体上面 */
+  box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 头部动画 */
+.head.sleep {
+  animation: sleep 1s ease-in-out;
+}
+
+.head.stretch {
+  animation: stretch 1.2s ease-in-out;
+}
+
+.head.jump {
+  animation: headJump 0.6s ease-out;
+}
+
+.head.meow {
+  animation: meow 0.4s ease-in-out;
+}
+
+.head.happy {
+  animation: happy 0.6s ease-in-out;
+}
+
+/* 耳朵 */
+.ear {
+  position: absolute;
+  width: 20px;
+  height: 28px;
+  background: linear-gradient(135deg, #8B7355 0%, #6B5344 100%);
+  border-radius: 50% 50% 40% 40%;
+  border: 2px solid #5A4535;
+  top: -8px;
+  transform-origin: bottom center;
+}
+
+.earLeft {
+  left: 15px;
+  transform: rotate(-25deg);
+}
+
+.earRight {
+  right: 15px;
+  transform: rotate(25deg);
+}
+
+.head.sleep .earLeft,
+.head.sleep .earRight {
+  animation: earSleep 1s ease-in-out;
+}
+
+@keyframes earSleep {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-5deg) translateY(-2px);
+  }
+}
+
+/* 脸部 */
+.face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.eyesContainer {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+/* ============ 眼睛结构 (还原参考图) ============ */
+/* 外层：作为眼睛的轮廓和边框 */
+.eye {
+  width: 20px;
+  height: 26px;
+  /* 竖长椭圆 */
+  background: #222;
+  /* 深色边框/眼线 */
+  border-radius: 50%;
+  /* 椭圆形状 */
+  padding: 2px;
+  /* 边框宽度 */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* 中层：白色眼球 */
+.eyeball {
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  /* 纯白眼球 */
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* 确保瞳孔不溢出眼球 */
+}
+
+/* 内层：超大黑色瞳孔 */
+.pupil {
+  width: 80%;
+  /* 瞳孔很大，占宽度80% */
+  height: 85%;
+  /* 占高度85% */
+  background: #000000;
+  /* 纯黑瞳孔 */
+  border-radius: 50%;
+  position: relative;
+  transform: translateY(1px);
+  /* 稍微偏下一点看起来更可爱 */
+}
+
+/* 瞳孔高光 (左上角) */
+.pupil::after {
+  content: '';
+  width: 6px;
+  /* 高光明显 */
+  height: 6px;
+  background: #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  /* 高光位置在左上 */
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+/* ============ 眼睛状态 ============ */
+
+/* 普通状态 - 眨眼动画 */
+.eye.idle .eyeball {
+  animation: eyeballBlink 4s ease-in-out infinite;
+}
+
+/* 睡眠/眯眼状态 - 闭眼 */
+.eye.sleep {
+  background: transparent;
+  /* 闭眼时不显示深色背景 */
+  box-shadow: none;
+  overflow: visible;
+}
+
+.eye.sleep .eyeball {
+  height: 0;
+  width: 18px;
+  border-top: 3px solid #222;
+  /* 闭上的眼线 */
+  border-radius: 50% 50% 0 0;
+  background: transparent;
+  margin-top: 4px;
+}
+
+.eye.sleep .pupil {
+  display: none;
+}
+
+/* 喵叫状态 */
+.eye.meow .eyeball {
+  animation: eyeballMeow 0.4s ease-in-out;
+}
+
+/* 开心状态 */
+.eye.happy .eyeball {
+  animation: eyeballHappy 0.6s ease-in-out;
+}
+
+/* ============ 眼睛动画 ============ */
+
+/* 眨眼 */
+@keyframes eyeballBlink {
+
+  0%,
+  10%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  5% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes eyeballMeow {
+
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes eyeballHappy {
+
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(0.5);
+  }
+}
+
+/* 鼻子 */
+.nose {
+  width: 12px;
+  height: 10px;
+  background: #ff6b9d;
+  border-radius: 50%;
+  margin-bottom: 5px;
+  box-shadow: inset -1px -1px 1px rgba(0, 0, 0, 0.1);
+}
+
+/* 嘴 - 微笑的小嘴 */
+.mouth {
+  width: 20px;
+  height: 12px;
+  border: 2px solid #333;
+  border-top: none;
+  border-radius: 0 0 20px 20px;
+}
+
+.mouth.meow {
+  animation: mouthMeow 0.4s ease-in-out;
+}
+
+.mouth.happy {
+  animation: mouthHappy 0.6s ease-in-out;
+}
+
+.mouth.sleep {
+  animation: mouthSleep 1s ease-in-out;
+}
+
+@keyframes mouthMeow {
+
+  0%,
+  100% {
+    border-radius: 0 0 20px 20px;
+    height: 14px;
+  }
+
+  50% {
+    border-radius: 50%;
+    height: 16px;
+  }
+}
+
+@keyframes mouthHappy {
+
+  0%,
+  100% {
+    border-radius: 0 0 20px 20px;
+    height: 14px;
+  }
+
+  50% {
+    border-radius: 0 0 20px 20px;
+    height: 18px;
+    border-bottom: 3px solid #333;
+  }
+}
+
+@keyframes mouthSleep {
+
+  0%,
+  100% {
+    border-radius: 0 0 20px 20px;
+  }
+
+  50% {
+    border-radius: 50% 50% 0 0;
+    transform: scaleY(-1);
+  }
+}
+
+/* 胡须 - 左右两侧对称 */
+.whiskers {
+  position: absolute;
+  width: 25px;
+  height: 30px;
+  top: 55%;
+  transform: translateY(-50%);
+}
+
+.whiskersLeft {
+  left: -8px;
+  /* 向左移出脸部边缘 */
+}
+
+.whiskersRight {
+  right: -8px;
+  /* 向右移出脸部边缘 */
+}
+
+.whisker {
+  position: absolute;
+  height: 2px;
+  background: #333;
+  width: 24px;
+  border-radius: 1px;
+}
+
+/* 左侧胡须 (原点在右边) */
+.whiskersLeft .whisker:nth-child(1) {
+  top: 5px;
+  right: 0;
+  transform: rotate(20deg);
+  /* 向上翘 */
+  transform-origin: right center;
+}
+
+.whiskersLeft .whisker:nth-child(2) {
+  top: 13px;
+  right: 0;
+  transform: rotate(0deg);
+  /* 平直 */
+  transform-origin: right center;
+}
+
+.whiskersLeft .whisker:nth-child(3) {
+  top: 21px;
+  right: 0;
+  transform: rotate(-20deg);
+  /* 向下撇 */
+  transform-origin: right center;
+}
+
+/* 右侧胡须 (原点在左边) */
+.whiskersRight .whisker:nth-child(1) {
+  top: 5px;
+  left: 0;
+  transform: rotate(-20deg);
+  /* 向上翘 */
+  transform-origin: left center;
+}
+
+.whiskersRight .whisker:nth-child(2) {
+  top: 13px;
+  left: 0;
+  transform: rotate(0deg);
+  /* 平直 */
+  transform-origin: left center;
+}
+
+.whiskersRight .whisker:nth-child(3) {
+  top: 21px;
+  left: 0;
+  transform: rotate(20deg);
+  /* 向下撇 */
+  transform-origin: left center;
+}
+
+/* 身体 - 丑猫特色：圆胖的身体 */
+.body {
+  position: absolute;
+  width: 76px;
+  /* 微调宽度 */
+  height: 65px;
+  background: linear-gradient(135deg, #8B7355 0%, #6B5344 50%, #5A4535 100%);
+  border-radius: 50% 50% 45% 45%;
+  top: 70px;
+  /* 稍微下移，让脖子部分重叠 */
+  left: 22px;
+  /* 居中: (120-76)/2 = 22 */
+  box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 肚子花纹 */
+.body::before {
+  content: '';
+  position: absolute;
+  width: 35px;
+  height: 40px;
+  background: linear-gradient(135deg, #A08060 0%, #8B7355 100%);
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -40%);
+}
+
+.body.sleep {
+  animation: bodySleep 1s ease-in-out;
+}
+
+.body.stretch {
+  animation: bodyStretch 1.2s ease-in-out;
+}
+
+.body.jump {
+  animation: bodyJump 0.6s ease-out;
+}
+
+.body.walk-left,
+.body.walk-right {
+  animation: bodyWalk 0.6s ease-in-out;
+}
+
+@keyframes bodySleep {
+
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+
+  50% {
+    transform: rotate(-15deg) translateY(5px);
+  }
+}
+
+@keyframes bodyStretch {
+
+  0%,
+  100% {
+    height: 65px;
+    transform: scaleY(1);
+  }
+
+  50% {
+    height: 55px;
+    transform: scaleY(0.85);
+  }
+}
+
+@keyframes bodyJump {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-40px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes bodyWalk {
+  0% {
+    transform: rotate(-3deg) translateY(0);
+  }
+
+  100% {
+    transform: rotate(3deg) translateY(-3px);
+  }
+}
+
+/* 腿 - 丑猫特色：短粗的腿 */
+.leg {
+  position: absolute;
+  width: 14px;
+  height: 28px;
+  background: linear-gradient(135deg, #8B7355 0%, #5A4535 100%);
+  border-radius: 50%;
+  border: 1px solid #4A3525;
+}
+
+/* 前手 - 在头和肚子中间的两侧（肩膀位置） */
+.legFrontLeft {
+  top: 5px;
+  /* 下移到脖子/肩膀位置 */
+  left: -12px;
+  /* 在身体左侧外 */
+  height: 24px;
+  width: 14px;
+  transform: rotate(-25deg);
+  /* 向外张开 */
+  z-index: 11;
+}
+
+.legFrontRight {
+  top: 5px;
+  /* 下移到脖子/肩膀位置 */
+  right: -12px;
+  /* 在身体右侧外 */
+  height: 24px;
+  width: 14px;
+  transform: rotate(25deg);
+  /* 向外张开 */
+  z-index: 11;
+}
+
+/* 后脚 - 在底部支撑 */
+.legBackLeft {
+  bottom: -12px;
+  left: 8px;
+  width: 16px;
+  /* 脚稍微宽点 */
+}
+
+.legBackRight {
+  bottom: -12px;
+  right: 8px;
+  width: 16px;
+  /* 脚稍微宽点 */
+}
+
+.leg.sleep {
+  animation: legSleep 1s ease-in-out;
+}
+
+.leg.stretch {
+  animation: legStretch 1.2s ease-in-out;
+}
+
+.leg.jump {
+  animation: legJump 0.6s ease-out;
+}
+
+/* 走路时的一只手举起打招呼 */
+.legFrontRight.walk-left,
+.legFrontRight.walk-right {
+  animation: waveHand 0.6s ease-in-out infinite alternate;
+}
+
+.legFrontLeft.walk-left,
+.legFrontLeft.walk-right {
+  animation: legWalk 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes waveHand {
+  0% {
+    transform: rotate(10deg) translateY(0);
+  }
+
+  100% {
+    transform: rotate(45deg) translateY(-5px);
+  }
+}
+
+@keyframes legWalk {
+  0% {
+    transform: rotate(-10deg);
+  }
+
+  100% {
+    transform: rotate(10deg);
+  }
+}
+
+@keyframes legSleep {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(8px) rotate(-5deg);
+  }
+}
+
+@keyframes legStretch {
+
+  0%,
+  100% {
+    height: 28px;
+  }
+
+  50% {
+    height: 38px;
+  }
+}
+
+@keyframes legJump {
+  0% {
+    transform: scaleY(0.8);
+  }
+
+  50% {
+    transform: scaleY(1.2);
+  }
+
+  100% {
+    transform: scaleY(0.8);
+  }
+}
+
+/* 腿部走路动画 */
+.legBackLeft.walk-left,
+.legBackLeft.walk-right {
+  animation: legWalkBack 0.6s ease-in-out infinite alternate-reverse;
+}
+
+.legBackRight.walk-left,
+.legBackRight.walk-right {
+  animation: legWalkBack 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes legWalkBack {
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(-5px);
+  }
+}
+
+/* 尾巴 - 丑猫特色：弯曲的尾巴 */
+.tail {
+  position: absolute;
+  width: 55px;
+  height: 16px;
+  background: linear-gradient(135deg, #8B7355 0%, #5A4535 100%);
+  border-radius: 50%;
+  bottom: 22px;
+  right: -22px;
+  transform-origin: left center;
+  box-shadow: inset -3px -3px 5px rgba(0, 0, 0, 0.1);
+  z-index: -1;
+  /* 放在身体后面 */
+}
+
+.tail.idle {
+  animation: tailIdle 3s ease-in-out infinite;
+}
+
+.tail.sleep {
+  animation: tailSleep 1s ease-in-out;
+}
+
+.tail.stretch {
+  animation: tailStretch 1.2s ease-in-out;
+}
+
+.tail.jump {
+  animation: tailJump 0.6s ease-out;
+}
+
+.tail.happy {
+  animation: tailHappy 0.6s ease-in-out;
+}
+
+.tail.walk-left,
+.tail.walk-right {
+  animation: tailWalk 0.6s ease-in-out;
+}
+
+@keyframes tailIdle {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-20deg);
+  }
+}
+
+@keyframes tailSleep {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-45deg) translateY(5px);
+  }
+}
+
+@keyframes tailStretch {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+    width: 55px;
+  }
+
+  50% {
+    transform: rotate(15deg);
+    width: 65px;
+  }
+}
+
+@keyframes tailJump {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(-30deg);
+  }
+
+  75% {
+    transform: rotate(30deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes tailHappy {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(-20deg);
+  }
+
+  50% {
+    transform: rotate(0deg);
+  }
+
+  75% {
+    transform: rotate(20deg);
+  }
+}
+
+@keyframes tailWalk {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-15deg);
+  }
+}
+
+/* 全身动画 */
+@keyframes sleep {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-30deg) translateX(-10px);
+  }
+}
+
+@keyframes stretch {
+
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(0.9);
+  }
+}
+
+@keyframes headJump {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-40px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes meow {
+
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  25% {
+    transform: scaleY(1.05);
+  }
+
+  75% {
+    transform: scaleY(0.95);
+  }
+}
+
+@keyframes happy {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  25% {
+    transform: translateY(-5px) rotate(2deg);
+  }
+
+  50% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  75% {
+    transform: translateY(-5px) rotate(-2deg);
+  }
+}
+
+/* 问候气泡 */
+.greetingBubble {
+  position: fixed;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 245, 255, 0.95) 100%);
+  color: #333;
+  padding: 12px 18px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: bold;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: bubbleFloat 3s ease-out forwards;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15), 0 0 0 2px rgba(139, 115, 85, 0.3);
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(139, 115, 85, 0.2);
+}
+
+.greetingBubble::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 18px;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 0px solid transparent;
+  border-top: 10px solid rgba(255, 255, 255, 0.98);
+}
+
+@keyframes bubbleFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.8);
+  }
+
+  10% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  90% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.8);
+  }
+}
+
+/* 交互提示 */
+.interactionHint {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  color: rgba(139, 115, 85, 0.8);
+  font-size: 13px;
+  font-weight: 500;
+  animation: hintBlink 2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 998;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.8);
+  padding: 8px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+}
+
+@keyframes hintBlink {
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 1024px) {
+  .cat {
+    width: 100px;
+    height: 120px;
+  }
+
+  .head {
+    width: 65px;
+    height: 65px;
+    left: 18px;
+  }
+
+  .ear {
+    width: 16px;
+    height: 22px;
+  }
+
+  .earLeft {
+    left: 12px;
+  }
+
+  .earRight {
+    right: 12px;
+  }
+
+  .body {
+    width: 60px;
+    height: 55px;
+    top: 55px;
+    left: 20px;
+  }
+
+  .eye {
+    width: 13px;
+    height: 16px;
+  }
+
+  .eye::before {
+    width: 8px;
+    height: 11px;
+  }
+
+  .eyesContainer {
+    gap: 16px;
+  }
+
+  .nose {
+    width: 10px;
+    height: 8px;
+  }
+
+  .mouth {
+    width: 18px;
+    height: 12px;
+  }
+
+  .leg {
+    width: 12px;
+    height: 24px;
+  }
+
+  .tail {
+    width: 45px;
+    height: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .cat {
+    width: 80px;
+    height: 100px;
+  }
+
+  .head {
+    width: 52px;
+    height: 52px;
+    left: 14px;
+  }
+
+  .ear {
+    width: 13px;
+    height: 18px;
+  }
+
+  .earLeft {
+    left: 10px;
+  }
+
+  .earRight {
+    right: 10px;
+  }
+
+  .body {
+    width: 48px;
+    height: 44px;
+    top: 44px;
+    left: 16px;
+  }
+
+  .eye {
+    width: 10px;
+    height: 13px;
+  }
+
+  .eye::before {
+    width: 6px;
+    height: 8px;
+  }
+
+  .eyesContainer {
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .nose {
+    width: 8px;
+    height: 6px;
+  }
+
+  .mouth {
+    width: 14px;
+    height: 9px;
+  }
+
+  .leg {
+    width: 10px;
+    height: 20px;
+  }
+
+  .tail {
+    width: 36px;
+    height: 11px;
+    bottom: 18px;
+  }
+
+  .interactionHint {
+    font-size: 11px;
+    bottom: 20px;
+    right: 20px;
+    padding: 6px 12px;
+  }
+
+  .greetingBubble {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+}

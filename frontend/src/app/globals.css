@@ -3,5 +3,90 @@
 @tailwind utilities;
 
 html, body {
-  background: #fff;
+  background: linear-gradient(to bottom, #fefaf9 0%, #fef7f7 50%, #fef9f9 100%);
+  min-height: 100vh;
+}
+
+@layer base {
+  * {
+    @apply antialiased;
+  }
+}
+
+/* 简约动效 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes progress {
+  from {
+    width: 0%;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.4s ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* 进度条样式 */
+.progress-bar {
+  @apply h-2 bg-pink-50 rounded-full overflow-hidden;
+}
+
+.progress-fill {
+  @apply h-full bg-gradient-to-r from-pink-200 to-rose-200 rounded-full transition-all duration-500 ease-out;
+  animation: progress 1s ease-out;
+}
+
+/* 卡片悬停效果 */
+.card-hover {
+  @apply transition-all duration-300 ease-out;
+}
+
+.card-hover:hover {
+  @apply transform -translate-y-1 shadow-lg;
+}
+
+/* 按钮点击效果 */
+.btn-press {
+  @apply transition-all duration-150;
+}
+
+.btn-press:active {
+  @apply transform scale-95;
 }

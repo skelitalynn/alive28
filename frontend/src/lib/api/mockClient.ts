@@ -3,6 +3,7 @@ import type { DailyLog, User } from "../store/schema";
 import { tasks } from "../tasks/tasks";
 import { keccakProofHash, makeSaltHex, mockTxHash } from "../logic/proof";
 import { reflectionTemplate } from "../logic/reflection";
+import { spoonClient } from "./spoonClient";
 import {
   CHALLENGE_ID,
   computeDayIndex,
@@ -34,24 +35,62 @@ async function getHomeSnapshot(address?: string | null): Promise<HomeSnapshot> {
 async function getDailySnapshot(address: string, dayIndex: number): Promise<DailySnapshot> {
   const store = loadStore();
   const user = getUser(store, address);
-  const dateKey = todayDateKey(user.timezone);
+
+  // 计算该 dayIndex 对应的 dateKey
+  let dateKey: string;
+  if (!user.startDateKey) {
+    // 如果还没有开始日期，使用今天的日期
+    dateKey = todayDateKey(user.timezone);
+  } else {
+    // 根据 startDateKey 和 dayIndex 计算对应的日期
+    const [sy, sm, sd] = user.startDateKey.split("-").map(Number);
+    const startDate = new Date(sy, sm - 1, sd);
+    const targetDate = new Date(startDate);
+    targetDate.setDate(startDate.getDate() + (dayIndex - 1));
+    const ty = targetDate.getFullYear();
+    const tm = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const td = String(targetDate.getDate()).padStart(2, "0");
+    dateKey = `${ty}-${tm}-${td}`;
+  }
+
   const task = tasks.find((t) => t.dayIndex === dayIndex) || tasks[0];
   const log = findLog(store, address, dateKey);
-  return { dateKey, task, log, alreadyCheckedIn: !!log };
+
+  // 只有当找到的日志的 dayIndex 匹配时才认为已完成
+  const alreadyCheckedIn = !!(log && log.dayIndex === dayIndex);
+
+  return { dateKey, task, log: alreadyCheckedIn ? log : null, alreadyCheckedIn };
 }
 
 async function checkin(params: { address: string; dayIndex: number; text: string }): Promise<CheckinResult> {
   const { address, dayIndex, text } = params;
   const store = loadStore();
   const user = getUser(store, address);
-  const dateKey = todayDateKey(user.timezone);
 
+  // 计算该 dayIndex 对应的 dateKey
+  let dateKey: string;
+  if (!user.startDateKey) {
+    // 如果还没有开始日期，使用今天的日期并设置为开始日期
+    dateKey = todayDateKey(user.timezone);
+    user.startDateKey = dateKey;
+  } else {
+    // 根据 startDateKey 和 dayIndex 计算对应的日期
+    const [sy, sm, sd] = user.startDateKey.split("-").map(Number);
+    const startDate = new Date(sy, sm - 1, sd);
+    const targetDate = new Date(startDate);
+    targetDate.setDate(startDate.getDate() + (dayIndex - 1));
+    const ty = targetDate.getFullYear();
+    const tm = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const td = String(targetDate.getDate()).padStart(2, "0");
+    dateKey = `${ty}-${tm}-${td}`;
+  }
+
+  // 检查该日期和 dayIndex 是否已经有日志
   const exist = findLog(store, address, dateKey);
-  if (exist) {
+  if (exist && exist.dayIndex === dayIndex) {
     return { log: exist, alreadyCheckedIn: true };
   }
 
-  computeDayIndex(user, dateKey);
   const di = dayIndex;
 
   const normalizedText = normalizeText(text);
@@ -59,7 +98,19 @@ async function checkin(params: { address: string; dayIndex: number; text: string
   const proofHash = keccakProofHash(dateKey, normalizedText, saltHex);
   const task = tasks.find((t) => t.dayIndex === di) || tasks[0];
   const { dayIndex: _taskDayIndex, ...taskBase } = task;
-  const reflection = reflectionTemplate({ ...taskBase, dayIndex: di }, normalizedText);
+
+  // 使用 SpoonOS AI 生成反馈，如果失败则降级到模板
+  let reflection;
+  try {
+    reflection = await spoonClient.generateReflection(
+      { ...taskBase, dayIndex: di },
+      normalizedText,
+      di
+    );
+  } catch (error) {
+    console.warn("SpoonOS AI failed, using fallback:", error);
+    reflection = reflectionTemplate({ ...taskBase, dayIndex: di }, normalizedText);
+  }
 
   updateStreak(user, dateKey);
 
@@ -76,6 +127,7 @@ async function checkin(params: { address: string; dayIndex: number; text: string
     status: "CREATED",
     txHash: null,
     daySbtTxHash: null,
+    nftImage: null,
     createdAt: new Date().toISOString()
   };
 
@@ -90,9 +142,16 @@ async function submitProof(params: { address: string }): Promise<DailyLog> {
   const { address } = params;
   const store = loadStore();
   const user = getUser(store, address);
-  const dateKey = todayDateKey(user.timezone);
-  const log = findLog(store, address, dateKey);
-  if (!log) throw new Error("请先 checkin 生成 proofHash");
+
+  // 获取今天的日期和对应的 dayIndex
+  const todayKey = todayDateKey(user.timezone);
+  const todayDayIndex = computeDayIndex(user, todayKey);
+
+  // 查找今天的日志
+  const log = findLog(store, address, todayKey);
+  if (!log || log.dayIndex !== todayDayIndex) {
+    throw new Error("请先 checkin 生成 proofHash");
+  }
   if (log.txHash) throw new Error("已提交过 Proof（幂等）");
 
   log.txHash = mockTxHash(`tx:proof:${log.proofHash}:${Date.now()}`);
@@ -106,10 +165,17 @@ async function mintDay(params: { address: string }): Promise<DailyLog> {
   const { address } = params;
   const store = loadStore();
   const user = getUser(store, address);
-  const dateKey = todayDateKey(user.timezone);
-  const log = findLog(store, address, dateKey);
-  if (!log) throw new Error("请先 checkin");
-  if (!log.txHash) throw new Error("请先模拟提交 Proof（submitProof）");
+
+  // 获取今天的日期和对应的 dayIndex
+  const todayKey = todayDateKey(user.timezone);
+  const todayDayIndex = computeDayIndex(user, todayKey);
+
+  // 查找今天的日志
+  const log = findLog(store, address, todayKey);
+  if (!log || log.dayIndex !== todayDayIndex) {
+    throw new Error("请先 checkin");
+  }
+  if (!log.txHash) throw new Error("请先提交 Proof（submitProof）");
   if (log.daySbtTxHash) throw new Error("今日 DaySBT 已 mint（幂等）");
 
   log.daySbtTxHash = mockTxHash(`tx:sbt:day:${log.dayIndex}:${Date.now()}`);
@@ -203,18 +269,18 @@ async function getReport(params: { address: string; range: "week" | "final" }): 
     .filter((l) => l.address === address.toLowerCase() && l.challengeId === CHALLENGE_ID)
     .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
 
-  const title = range === "final" ? "结营报告（模拟）" : "周报（模拟）";
+  const title = range === "final" ? "结营报告" : "周报";
   const recentLogs = logs.slice(-6).reverse();
 
   const total = logs.length;
   const minted = logs.filter((l) => l.daySbtTxHash).length;
   const streak = store.users[address.toLowerCase()]?.streak || 0;
   const reportText = (() => {
-    if (!total) return "你还没有打卡记录。先去 Daily 页写一句话。";
+    if (!total) return "你还没有记录，去开始你的第一天吧！每一小步都是成长。";
     if (range === "final") {
-      return `你累计记录了 ${total} 天，已模拟铸造 ${minted} 枚 DaySBT，当前 streak 为 ${streak}。结营版本建议：挑一条你最想保留的“边界”，把它写成一句固定句，接下来每周读一遍。`;
+      return `恭喜你完成了28天的旅程！在这 ${total} 天里，你完成了 ${minted} 个任务，连续坚持了 ${streak} 天。\n\n这段旅程中，你记录下的每一个感受都是珍贵的。建议你挑选一条最触动你的感悟，把它写下来，在未来的日子里时常回顾。成长不是一蹴而就的，而是每一天的小小坚持累积而成的。\n\n你已经拥有了持续成长的能力，继续前行吧！✨`;
     }
-    return `这段时间你记录了 ${total} 天，已模拟铸造 ${minted} 枚 DaySBT。你的节奏更像“先做一小步再往下走”。如果要继续：每天只保留一句最关键的句子。`;
+    return `这段时间你记录了 ${total} 天，完成了 ${minted} 个任务。\n\n你的节奏很好，就像"先做一小步再往下走"。这种渐进的方式正是持续成长的关键。\n\n继续加油！每天记录下最真实的感受，哪怕只是一句话，也是在为自己积累力量。💪`;
   })();
 
   const byDay = new Array(28).fill(0);

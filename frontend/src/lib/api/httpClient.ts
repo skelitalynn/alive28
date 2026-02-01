@@ -2,11 +2,13 @@
 import type { DailyLog, User } from "../store/schema";
 import { encodeFunctionData } from "viem";
 import { mockTxHash } from "../logic/proof";
+import { tasks } from "../tasks/tasks";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111");
 const PROOF_REGISTRY = process.env.NEXT_PUBLIC_PROOF_REGISTRY || "0x0000000000000000000000000000000000000000";
 const BADGE_SBT = process.env.NEXT_PUBLIC_BADGE_SBT || "0x0000000000000000000000000000000000000000";
+const MILESTONE_NFT = process.env.NEXT_PUBLIC_MILESTONE_NFT || BADGE_SBT;
 
 const ProofRegistryAbi = [
   {
@@ -273,9 +275,9 @@ async function composeFinal(params: { address: string }): Promise<User> {
   return toUser(progress);
 }
 
-async function mintMilestone(params: { address: string; milestoneId: number }): Promise<User> {
-  // 里程碑合约未在文档中定义，当前仅记录 txHash（需前端接入真实合约后替换）
-  const txHash = mockTxHash(`tx:milestone:${params.milestoneId}:${Date.now()}`);
+async function mintMilestone(params: { address: string; milestoneId: number; txHash?: string }): Promise<User> {
+  // DEMO_MODE: 若未传 txHash，则生成 mockTxHash 上报后端
+  const txHash = params.txHash || mockTxHash(`tx:milestone:${params.milestoneId}:${Date.now()}`);
   await fetchJson("/milestone/mint", {
     method: "POST",
     body: JSON.stringify({
@@ -283,7 +285,7 @@ async function mintMilestone(params: { address: string; milestoneId: number }): 
       milestoneId: params.milestoneId,
       txHash,
       chainId: CHAIN_ID,
-      contractAddress: BADGE_SBT
+      contractAddress: MILESTONE_NFT
     })
   });
   const progress = await getProgressRaw(params.address);

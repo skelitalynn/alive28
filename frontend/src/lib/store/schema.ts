@@ -25,6 +25,7 @@ export type DailyLog = {
   status: DailyLogStatus;
   txHash: string | null;
   daySbtTxHash: string | null;
+  nftImage: string | null; // 生成的NFT图片 base64 数据
   createdAt: string;
 };
 

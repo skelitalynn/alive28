@@ -53,7 +53,7 @@ export function AddressProvider({ children }: { children: ReactNode }) {
   const applyInputAsAddress = () => {
     const val = input.trim();
     if (!val.startsWith("0x") || val.length < 10) {
-      alert("请输入类似 0x... 的地址（模拟也行）");
+      alert("请输入一个有效的标识（至少10个字符）");
       return;
     }
     setAddress(val);
@@ -66,9 +66,9 @@ export function AddressProvider({ children }: { children: ReactNode }) {
   };
 
   const resetData = () => {
-    if (!confirm("确认清空本地数据？")) return;
+    if (!confirm("确认要清空所有数据吗？此操作不可恢复。")) return;
     resetStore();
-    alert("已清空 LocalStorage");
+    alert("✨ 数据已清空，可以重新开始你的旅程了");
   };
 
   const focusInput = () => {

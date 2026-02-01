@@ -26,19 +26,13 @@ class GraphState(TypedDict, total=False):
     streak: int
     completedDays: List[int]
     todayCheckedIn: bool
-    todayDayMinted: bool
-    dayMintCount: int
-    finalMinted: bool
-    shouldMintDay: bool
-    mintableDayIndex: Optional[int]
-    shouldComposeFinal: bool
     reportRange: Optional[str]
     reportText: Optional[str]
     chartByDay: Optional[List[int]]
     recentLogs: Optional[List[Any]]
     title: Optional[str]
     startDateKey: Optional[str]
-    finalSbtTxHash: Optional[str]
     milestones: Optional[Dict[str, Optional[str]]]
+    eligibleMilestones: Optional[List[int]]
     alreadyCheckedIn: bool
     db: Any

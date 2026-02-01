@@ -10,6 +10,7 @@ from ..services.tasks import get_task_by_day_index
 from ..services.crypto import normalize_text, sha256_hex, generate_salt_hex, compute_proof_hash
 from ..services.reflection import generate_reflection
 from ..services.time import date_key_for_timezone, diff_days
+from ..services.report import generate_report_text
 from ..models import DailyLog, UserProgress
 
 
@@ -22,8 +23,6 @@ def _ensure_progress(db: Session, address: str, timezone: str, date_key: str, st
             challenge_id=settings.challenge_id,
             start_date_key=start_date_key_override or date_key,
             streak=0,
-            day_mint_count=0,
-            final_minted=False,
             milestones={"1": None, "2": None, "3": None},
         )
         db.add(progress)
@@ -222,42 +221,38 @@ async def progress_update_node(state: Dict[str, Any]) -> Dict[str, Any]:
     completed_days = sorted({l.day_index for l in logs})
 
     today_checked_in = bool(log)
-    today_day_minted = bool(log.day_sbt_tx_hash) if log else False
-    should_mint_day = bool(today_checked_in and not today_day_minted)
-    mintable_day_index = log.day_index if log else None
-    should_compose_final = bool(progress.day_mint_count == 28 and not progress.final_minted)
+    milestones = progress.milestones or {"1": None, "2": None, "3": None}
 
     return {
         "logId": log.id if log else None,
         "streak": progress.streak or 0,
         "completedDays": completed_days,
         "todayCheckedIn": today_checked_in,
-        "todayDayMinted": today_day_minted,
-        "dayMintCount": progress.day_mint_count,
-        "finalMinted": progress.final_minted,
-        "shouldMintDay": should_mint_day,
-        "mintableDayIndex": mintable_day_index,
-        "shouldComposeFinal": should_compose_final,
         "dateKey": date_key,
         "startDateKey": progress.start_date_key,
-        "finalSbtTxHash": progress.final_sbt_tx_hash,
-        "milestones": progress.milestones,
+        "milestones": milestones,
         "alreadyCheckedIn": already_checked_in or today_checked_in,
     }
 
 
 async def badge_check_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    completed_days = set(state.get("completedDays") or [])
+    milestones = state.get("milestones") or {"1": None, "2": None, "3": None}
+    eligible = []
+    if milestones.get("1") is None and all(day in completed_days for day in range(1, 8)):
+        eligible.append(1)
+    if milestones.get("2") is None and all(day in completed_days for day in range(1, 15)):
+        eligible.append(2)
+    if milestones.get("3") is None and all(day in completed_days for day in range(1, 29)):
+        eligible.append(3)
     return {
-        "shouldMintDay": state.get("shouldMintDay", False),
-        "mintableDayIndex": state.get("mintableDayIndex"),
-        "shouldComposeFinal": state.get("shouldComposeFinal", False),
+        "eligibleMilestones": eligible,
         "alreadyCheckedIn": state.get("alreadyCheckedIn", False),
     }
 
 
 def _report_payload(logs: list, title: str, range_value: str) -> Dict[str, Any]:
     total = len(logs)
-    minted = len([l for l in logs if l.day_sbt_tx_hash])
     streak = 0
     chart_by_day = [0] * 28
     for log in logs:
@@ -266,9 +261,9 @@ def _report_payload(logs: list, title: str, range_value: str) -> Dict[str, Any]:
     if total == 0:
         report_text = "你还没有打卡记录。先去 Daily 页写一句话。"
     elif range_value == "final":
-        report_text = f"你累计记录了 {total} 天，已铸造 {minted} 枚 DaySBT。结营建议：挑一条你最想保留的‘边界’，把它写成一句固定句，接下来每周读一遍。"
+        report_text = f"你累计记录了 {total} 天。结营建议：挑一条你最想保留的‘边界’，把它写成一句固定句，接下来每周读一遍。"
     else:
-        report_text = f"这段时间你记录了 {total} 天，已铸造 {minted} 枚 DaySBT。你的节奏更像‘先做一小步再往下走’。如果要继续：每天只保留一句最关键的句子。"
+        report_text = f"这段时间你记录了 {total} 天。你的节奏更像‘先做一小步再往下走’。如果要继续：每天只保留一句最关键的句子。"
     recent_logs = list(reversed(logs[-6:]))
     return {
         "title": title,
@@ -290,7 +285,10 @@ async def weekly_report_node(state: Dict[str, Any]) -> Dict[str, Any]:
             DailyLog.challenge_id == challenge_id,
         ).order_by(DailyLog.date_key)
     ).all()
-    payload = _report_payload(logs, "周报（模拟）", "week")
+    range_logs = logs[-7:] if logs else []
+    payload = _report_payload(range_logs, "周报（模拟）", "week")
+    if range_logs:
+        payload["reportText"] = await generate_report_text(range_logs, "week")
     return payload
 
 
@@ -305,4 +303,6 @@ async def final_report_node(state: Dict[str, Any]) -> Dict[str, Any]:
         ).order_by(DailyLog.date_key)
     ).all()
     payload = _report_payload(logs, "结营报告（模拟）", "final")
+    if logs:
+        payload["reportText"] = await generate_report_text(logs, "final")
     return payload

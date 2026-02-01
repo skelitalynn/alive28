@@ -10,6 +10,7 @@ export default function HomePage() {
   const { address, storeVersion, ready } = useAddress();
   const [dayBtnLabel, setDayBtnLabel] = useState("Day 1");
   const [dayBtnTarget, setDayBtnTarget] = useState(1);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     if (!ready) return;
@@ -17,63 +18,74 @@ export default function HomePage() {
       setDayBtnLabel(res.dayBtnLabel);
       setDayBtnTarget(res.dayBtnTarget);
     });
+    if (address) {
+      api.getProgress({ address }).then((data) => {
+        const p = Math.round(((data?.dayMintCount || 0) / 28) * 100);
+        setProgress(p);
+      });
+    }
   }, [address, storeVersion, ready]);
 
   if (!ready) return null;
 
+  if (!address) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-12 animate-fade-in">
+        <div className="text-6xl mb-6 animate-pulse-slow">🌿</div>
+        <h1 className="text-3xl font-semibold text-pink-800 mb-4">欢迎来到 Alive28</h1>
+        <p className="text-lg text-pink-600/80 leading-relaxed mb-8">
+          这是一段28天的自我探索之旅<br />
+          每天一个小任务，记录你的感受与成长<br />
+          让我们开始吧 ✨
+        </p>
+        <div className="mt-8 text-sm text-pink-500/70">
+          请在上方设置你的身份标识，开始这段美好的旅程
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="rounded-2xl border border-slate-200 p-6">
-        <div className="text-xl font-semibold">你要看到的效果</div>
-        <div className="mt-2 text-sm text-slate-600 leading-relaxed">
-          这是 Alive28 的“可点可跑”前端 Demo：<br />
-          - 每日任务卡（Day 1..28）<br />
-          - 输入一句话 → 生成 note/next<br />
-          - 生成 proofHash（keccak256）<br />
-          - 模拟 submitProof / mintDay / composeFinal（记录 txHash）<br />
-          - 进度页/报告页（ECharts）
+    <div className="max-w-3xl mx-auto animate-fade-in">
+      <div className="rounded-2xl border border-pink-100 bg-white/80 backdrop-blur-sm p-8 shadow-sm card-hover">
+        <div className="text-center mb-8">
+          <div className="text-5xl mb-4 animate-pulse-slow">💫</div>
+          <h1 className="text-2xl font-semibold text-pink-800 mb-2">今天也要加油呀</h1>
+          <p className="text-pink-600/70">继续你的成长之旅，记录当下的感受</p>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        {/* 进度条 */}
+        {progress > 0 && (
+          <div className="mb-6 animate-slide-in">
+            <div className="flex justify-between text-sm text-pink-600/70 mb-2">
+              <span>整体进度</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
           <button
-            className="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm hover:bg-slate-800"
+            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-pink-200 to-rose-200 text-pink-700 text-lg font-medium hover:from-pink-300 hover:to-rose-300 transition-all shadow-sm transform hover:scale-105 btn-press"
             onClick={() => router.push(`/daily/${dayBtnTarget}`)}
           >
             {dayBtnLabel}
           </button>
           <button
-            className="px-3 py-2 rounded-xl border border-slate-200 text-sm hover:bg-slate-50"
+            className="px-6 py-4 rounded-2xl border border-pink-100 bg-white/90 text-pink-700 text-base hover:bg-pink-50/50 transition-all btn-press"
             onClick={() => router.push("/progress")}
           >
-            进度页
+            查看进度
           </button>
           <button
-            className="px-3 py-2 rounded-xl border border-slate-200 text-sm hover:bg-slate-50"
+            className="px-6 py-4 rounded-2xl border border-pink-100 bg-white/90 text-pink-700 text-base hover:bg-pink-50/50 transition-all btn-press"
             onClick={() => router.push("/report?range=week")}
           >
-            周报
+            我的周报
           </button>
-        </div>
-
-        <div className="mt-6 text-xs text-slate-500">
-          当前模式：mock（LocalStorage）。之后接你后端：把 mockClient 换成 httpClient 即可。
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 p-6">
-        <div className="text-xl font-semibold">快速提示</div>
-        <div className="mt-2 text-sm text-slate-600 leading-relaxed">
-          1) 上面先设置一个 address（随便填一个 0x...）<br />
-          2) 去 Daily 页做一次打卡<br />
-          3) 点“模拟提交 Proof”→ 记录 txHash<br />
-          4) 点“模拟 Mint Day SBT”→ dayMintCount +1<br />
-          5) 进度页会显示 shouldComposeFinal 条件（这里你得把 1..28 都打卡才能合成）
-        </div>
-
-        <div className="mt-5 rounded-xl bg-slate-50 p-4">
-          <div className="text-sm font-semibold">当前地址</div>
-          <div className="mt-1 font-mono text-sm break-all">{address ? address : "未连接"}</div>
-          <div className="mt-3 text-xs text-slate-500">这只是模拟；真实版本用 wagmi/viem 连接钱包并发交易。</div>
         </div>
       </div>
     </div>

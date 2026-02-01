@@ -45,6 +45,6 @@ export interface ApiClient {
   mintDay: (params: { address: string }) => Promise<DailyLog>;
   getProgress: (params: { address: string }) => Promise<ProgressData>;
   composeFinal: (params: { address: string }) => Promise<User>;
-  mintMilestone: (params: { address: string; milestoneId: number }) => Promise<User>;
+  mintMilestone: (params: { address: string; milestoneId: number; txHash?: string }) => Promise<User>;
   getReport: (params: { address: string; range: "week" | "final" }) => Promise<ReportData>;
 }

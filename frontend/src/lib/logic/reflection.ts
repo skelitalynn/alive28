@@ -15,14 +15,17 @@ export function reflectionTemplate(task: DailyTask, normalizedText: string): Ref
     return "今天你把这件事写出来了。";
   })();
 
-  const note = t.length < 8 ? `${mood}就先从一句开始也可以。` : `${mood}你在做的是把一天重新收回来。`;
+  const note =
+    t.length < 8
+      ? `${mood}今天能留下哪怕一句话也很重要。别要求自己一次写得很完整，你可以先从一句最真实的话开始。你愿意停下来记录，就是在照顾自己。`
+      : `${mood}你在做的是把一天重新收回来，这份诚实本身就很珍贵。请允许自己先被看见，再慢慢整理。你已经在往前走了。`;
 
   const next = (() => {
-    if (task.dayIndex === 6) return "用1分钟补全：我感到__，因为__。";
-    if (t.includes("拖") || t.includes("没做")) return "现在定个2分钟计时，只做最小一步。";
-    if (t.includes("想") && t.length > 20) return "划掉一句多余的话，只留最关键的一句。";
-    return "写一句：我现在最在意的是__。";
+    if (task.dayIndex === 6) return "用1分钟补全：我感到__，因为__，然后深呼吸三次。";
+    if (t.includes("拖") || t.includes("没做")) return "现在定个2分钟计时，只做最小一步并记录一句话。";
+    if (t.includes("想") && t.length > 20) return "划掉一句多余的话，只保留最关键的一句并写清原因。";
+    return "写一句：我现在最在意的是__，并说明原因。";
   })();
 
-  return { note: note.slice(0, 50), next: next.slice(0, 30) };
+  return { note: note.slice(0, 300), next: next.slice(0, 40) };
 }

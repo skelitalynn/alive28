@@ -1,6 +1,7 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from datetime import datetime
+import os
 import json
 from typing import Dict, Any, Optional
 
@@ -19,18 +20,22 @@ from .schemas import (
     TxConfirmResponse,
     ProgressResponse,
     ReportResponse,
-    SbtConfirmRequest,
-    SbtConfirmResponse,
     MetadataResponse,
     DailySnapshotResponse,
     HomeSnapshotResponse,
     MilestoneMintRequest,
     MilestoneMintResponse,
+    AiReflectionRequest,
+    AiReflectionResponse,
+    GenerateNftRequest,
+    GenerateNftResponse,
 )
 from .models import UserProgress, DailyLog
 from .services.tasks import get_task_by_day_index
 from .services.time import date_key_for_timezone, diff_days, date_key_for_day_index
 from .graph.agent import create_agent
+from .services.reflection import generate_reflection
+from .services.nft_image import generate_nft_image
 
 router = APIRouter()
 
@@ -96,20 +101,13 @@ def _log_to_response(log: DailyLog) -> Dict[str, Any]:
         "proofHash": log.proof_hash,
         "status": log.status,
         "txHash": log.tx_hash,
-        "daySbtTxHash": log.day_sbt_tx_hash,
         "createdAt": log.created_at.isoformat() + "Z",
     }
 
 
-def _token_id_for_day(address: str, day_index: int) -> int:
+def _token_id_for_milestone(address: str, milestone_id: int) -> int:
     addr_bytes = bytes.fromhex(address[2:])
-    packed = addr_bytes + bytes([day_index])
-    return int.from_bytes(keccak(packed), "big")
-
-
-def _token_id_for_final(address: str) -> int:
-    addr_bytes = bytes.fromhex(address[2:])
-    packed = addr_bytes + bytes([99])
+    packed = addr_bytes + bytes([milestone_id])
     return int.from_bytes(keccak(packed), "big")
 
 
@@ -175,8 +173,6 @@ def update_user(payload: UserUpdateRequest, session: Session = Depends(get_sessi
             challenge_id=settings.challenge_id,
             start_date_key=date_key,
             streak=0,
-            day_mint_count=0,
-            final_minted=False,
             milestones=_default_milestones(),
         )
     else:
@@ -318,53 +314,6 @@ async def tx_confirm(payload: TxConfirmRequest, session: Session = Depends(get_s
     return {"ok": True}
 
 
-@router.post("/sbt/confirm", response_model=SbtConfirmResponse)
-def sbt_confirm(payload: SbtConfirmRequest, session: Session = Depends(get_session)):
-    address = _require_address(payload.address)
-    sbt_type = payload.type.upper()
-    if sbt_type not in ("DAY", "FINAL"):
-        _http_error(400, "INVALID_ARGUMENT", "type must be DAY or FINAL")
-
-    progress = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
-    if not progress:
-        _http_error(404, "NOT_FOUND", "user not found")
-    _ensure_milestones(progress, session)
-
-    if sbt_type == "DAY":
-        if payload.dayIndex is None or payload.dayIndex < 1 or payload.dayIndex > 28:
-            _http_error(400, "INVALID_ARGUMENT", "dayIndex must be between 1 and 28")
-        log = session.exec(
-            select(DailyLog).where(
-                DailyLog.address == address,
-                DailyLog.challenge_id == settings.challenge_id,
-                DailyLog.day_index == payload.dayIndex,
-            ).order_by(DailyLog.date_key.desc())
-        ).first()
-        if not log:
-            _http_error(404, "NOT_FOUND", "daily log not found for dayIndex")
-        if log.day_sbt_tx_hash:
-            return {"ok": True}
-        log.day_sbt_tx_hash = payload.txHash
-        log.chain_id = payload.chainId
-        log.contract_address = payload.contractAddress
-        if progress.day_mint_count < 28:
-            progress.day_mint_count += 1
-        progress.updated_at = datetime.utcnow()
-        session.add(log)
-        session.add(progress)
-        session.commit()
-        return {"ok": True}
-
-    if progress.final_minted:
-        return {"ok": True}
-    progress.final_minted = True
-    progress.final_sbt_tx_hash = payload.txHash
-    progress.updated_at = datetime.utcnow()
-    session.add(progress)
-    session.commit()
-    return {"ok": True}
-
-
 @router.post("/milestone/mint", response_model=MilestoneMintResponse)
 def milestone_mint(payload: MilestoneMintRequest, session: Session = Depends(get_session)):
     address = _require_address(payload.address)
@@ -436,13 +385,7 @@ async def progress(address: str, session: Session = Depends(get_session)):
     return {
         "dateKey": result.get("dateKey") or date_key_for_timezone(progress.timezone),
         "streak": result.get("streak", progress.streak or 0),
-        "dayMintCount": result.get("dayMintCount", progress.day_mint_count),
         "completedDays": result.get("completedDays", []),
-        "shouldMintDay": result.get("shouldMintDay", False),
-        "mintableDayIndex": result.get("mintableDayIndex"),
-        "shouldComposeFinal": result.get("shouldComposeFinal", False),
-        "finalMinted": result.get("finalMinted", progress.final_minted),
-        "finalSbtTxHash": progress.final_sbt_tx_hash,
         "milestones": milestones,
         "startDateKey": progress.start_date_key,
     }
@@ -455,43 +398,88 @@ def metadata(token_id: str, session: Session = Depends(get_session)):
     except Exception:
         _http_error(400, "INVALID_ARGUMENT", "invalid tokenId")
 
+    def _milestone_meta(milestone_id: int) -> Dict[str, Any]:
+        if milestone_id == 1:
+            return {
+                "name": "Alive28 - Week1",
+                "description": "Alive28 milestone NFT for completing 7 days.",
+                "image": "https://YOUR_DOMAIN/static/week1.png",
+                "attributes": [
+                    {"trait_type": "Type", "value": "MilestoneNFT"},
+                    {"trait_type": "Milestone", "value": "Week1"},
+                    {"trait_type": "Days", "value": 7},
+                    {"trait_type": "Challenge", "value": "Alive28"},
+                ],
+            }
+        if milestone_id == 2:
+            return {
+                "name": "Alive28 - Week2",
+                "description": "Alive28 milestone NFT for completing 14 days.",
+                "image": "https://YOUR_DOMAIN/static/week2.png",
+                "attributes": [
+                    {"trait_type": "Type", "value": "MilestoneNFT"},
+                    {"trait_type": "Milestone", "value": "Week2"},
+                    {"trait_type": "Days", "value": 14},
+                    {"trait_type": "Challenge", "value": "Alive28"},
+                ],
+            }
+        return {
+            "name": "Alive28 - Final",
+            "description": "Alive28 milestone NFT for completing 28 days.",
+            "image": "https://YOUR_DOMAIN/static/final.png",
+            "attributes": [
+                {"trait_type": "Type", "value": "MilestoneNFT"},
+                {"trait_type": "Milestone", "value": "Final"},
+                {"trait_type": "Days", "value": 28},
+                {"trait_type": "Challenge", "value": "Alive28"},
+            ],
+        }
+
     users = session.exec(select(UserProgress)).all()
     for user in users:
-        if _token_id_for_final(user.address) == token_int:
-            return {
-                "name": "Alive28 - Final",
-                "description": "Alive28 final soulbound badge for completing 28 days.",
-                "image": "https://YOUR_DOMAIN/static/final.png",
-                "attributes": [
-                    {"trait_type": "Type", "value": "FinalSBT"},
-                    {"trait_type": "Days", "value": 28},
-                    {"trait_type": "Challenge", "value": "Alive28"},
-                ],
-            }
-
-    logs = session.exec(select(DailyLog)).all()
-    for log in logs:
-        if _token_id_for_day(log.address, log.day_index) == token_int:
-            return {
-                "name": f"Alive28 - Day {log.day_index}",
-                "description": "Alive28 daily check-in soulbound badge.",
-                "image": "https://YOUR_DOMAIN/static/day.png",
-                "attributes": [
-                    {"trait_type": "Type", "value": "DaySBT"},
-                    {"trait_type": "DayIndex", "value": log.day_index},
-                    {"trait_type": "Challenge", "value": "Alive28"},
-                ],
-            }
+        milestones = user.milestones or {}
+        for milestone_id in (1, 2, 3):
+            if milestones.get(str(milestone_id)) and _token_id_for_milestone(user.address, milestone_id) == token_int:
+                return _milestone_meta(milestone_id)
 
     return {
-        "name": f"Alive28 - Badge {token_id}",
-        "description": "Alive28 soulbound badge.",
-        "image": "https://YOUR_DOMAIN/static/day.png",
+        "name": f"Alive28 - Milestone {token_id}",
+        "description": "Alive28 milestone NFT.",
+        "image": "https://YOUR_DOMAIN/static/final.png",
         "attributes": [
-            {"trait_type": "Type", "value": "DaySBT"},
-            {"trait_type": "DayIndex", "value": 0},
+            {"trait_type": "Type", "value": "MilestoneNFT"},
+            {"trait_type": "Milestone", "value": "Unknown"},
+            {"trait_type": "Days", "value": 0},
             {"trait_type": "Challenge", "value": "Alive28"},
         ],
+    }
+
+
+@router.post("/ai/reflection", response_model=AiReflectionResponse)
+async def ai_reflection(payload: AiReflectionRequest):
+    if not payload.userText or not payload.task:
+        _http_error(400, "INVALID_ARGUMENT", "userText and task are required")
+    reflection = await generate_reflection(payload.task.model_dump(), payload.userText)
+    return {"reflection": reflection}
+
+
+@router.post("/ai/generate-nft", response_model=GenerateNftResponse)
+def ai_generate_nft(payload: GenerateNftRequest):
+    if payload.userText is None or payload.dayIndex is None:
+        _http_error(400, "INVALID_ARGUMENT", "userText and dayIndex are required")
+    image = generate_nft_image(
+        day_index=payload.dayIndex,
+        task_title=payload.taskTitle or f"Day {payload.dayIndex}",
+        user_text=payload.userText,
+        reflection_note=payload.reflectionNote or "",
+        reflection_next=payload.reflectionNext or "",
+        gemini_api_key=os.getenv("GOOGLE_AI_API_KEY", ""),
+    )
+    return {
+        "success": True,
+        "image": image,
+        "dayIndex": payload.dayIndex,
+        "message": f"Day {payload.dayIndex} NFT generated",
     }
 
 
