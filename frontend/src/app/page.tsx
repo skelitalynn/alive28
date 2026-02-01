@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -32,7 +32,7 @@ export default function HomePage() {
     return (
       <div className="max-w-2xl mx-auto text-center py-12 animate-fade-in">
         <div className="text-6xl mb-6 animate-pulse-slow">🌿</div>
-        <h1 className="text-3xl font-semibold text-pink-800 mb-4">欢迎来到 Alive28</h1>
+        <h1 className="text-3xl font-semibold text-pink-800 mb-4">欢迎来到 HOPE小希</h1>
         <p className="text-lg text-pink-600/80 leading-relaxed mb-8">
           这是一段28天的自我探索之旅<br />
           每天一个小任务，记录你的感受与成长<br />

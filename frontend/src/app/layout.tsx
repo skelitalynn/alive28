@@ -1,4 +1,4 @@
-﻿import "./globals.css";
+import "./globals.css";
 import type { Metadata } from "next";
 import TopBar from "../components/TopBar";
 import AddressBar from "../components/AddressBar";
@@ -7,7 +7,7 @@ import { WalletProvider } from "../components/WalletProvider";
 import Cat from "../components/Cat";
 
 export const metadata: Metadata = {
-  title: "Alive28 - 28天心灵成长之旅",
+  title: "HOPE小希 - 28天心灵成长之旅",
   description: "每天一小步，遇见更好的自己"
 };
 

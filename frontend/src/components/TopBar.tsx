@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRouter } from "next/navigation";
 
@@ -12,7 +12,7 @@ export default function TopBar() {
           ✨
         </div>
         <div>
-          <div className="text-xl font-semibold leading-tight text-pink-800">Alive28</div>
+          <div className="text-xl font-semibold leading-tight text-pink-800">HOPE小希</div>
           <div className="text-sm text-pink-600/70">28天心灵成长之旅</div>
         </div>
       </div>

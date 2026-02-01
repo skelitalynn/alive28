@@ -3,11 +3,23 @@ import type { Address } from "viem";
 const MILESTONE_NFT_CONTRACT = (process.env.NEXT_PUBLIC_MILESTONE_NFT ||
   "0x0000000000000000000000000000000000000000") as Address;
 
+// 三个里程碑对应 public/nft 下的图片（不依赖合约即可展示）
+const MILESTONE_IMAGE_BY_ID: Record<1 | 2 | 3, string> = {
+  1: "/nft/week1.svg",
+  2: "/nft/week2.svg",
+  3: "/nft/final.svg"
+};
+
 const MILESTONE_IMAGES = [
   "/nft-assets/milestone-1.png",
   "/nft-assets/milestone-2.png",
   "/nft-assets/milestone-3.png"
 ];
+
+/** 按里程碑 ID 取对应图片（用于页面展示，无需合约） */
+export function getMilestoneImageForId(milestoneId: 1 | 2 | 3): string {
+  return MILESTONE_IMAGE_BY_ID[milestoneId];
+}
 
 export function getRandomMilestoneImage(): string {
   const randomIndex = Math.floor(Math.random() * MILESTONE_IMAGES.length);

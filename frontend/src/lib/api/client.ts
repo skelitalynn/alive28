@@ -1,4 +1,4 @@
-﻿import type { DailyLog, DailyTask, User } from "../store/schema";
+import type { DailyLog, DailyTask, User } from "../store/schema";
 
 export type HomeSnapshot = {
   dayBtnLabel: string;
@@ -37,7 +37,10 @@ export type ReportData = {
   range: "week" | "final";
 };
 
+export type ConfigData = { demo_mode: boolean };
+
 export interface ApiClient {
+  getConfig: () => Promise<ConfigData>;
   getHomeSnapshot: (address?: string | null) => Promise<HomeSnapshot>;
   getDailySnapshot: (address: string, dayIndex: number) => Promise<DailySnapshot>;
   checkin: (params: { address: string; dayIndex: number; text: string }) => Promise<CheckinResult>;

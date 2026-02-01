@@ -1,4 +1,4 @@
-﻿import type { ApiClient, CheckinResult, DailySnapshot, HomeSnapshot, ProgressData, ReportData } from "./client";
+import type { ApiClient, CheckinResult, DailySnapshot, HomeSnapshot, ProgressData, ReportData } from "./client";
 import type { DailyLog, User } from "../store/schema";
 import { encodeFunctionData } from "viem";
 import { mockTxHash } from "../logic/proof";
@@ -110,6 +110,7 @@ function mapLog(raw: any): DailyLog {
     status: raw.status,
     txHash: raw.txHash ?? raw.tx_hash ?? null,
     daySbtTxHash: raw.daySbtTxHash ?? raw.day_sbt_tx_hash ?? null,
+    nftImage: raw.nftImage ?? raw.nft_image ?? null,
     createdAt: raw.createdAt ?? raw.created_at
   };
 }
@@ -305,7 +306,13 @@ async function getReport(params: { address: string; range: "week" | "final" }): 
   };
 }
 
+async function getConfig(): Promise<{ demo_mode: boolean }> {
+  const res = await fetchJson<{ status: string; version: string; demo_mode?: boolean }>("/health");
+  return { demo_mode: res.demo_mode ?? false };
+}
+
 export const httpClient: ApiClient = {
+  getConfig,
   getHomeSnapshot,
   getDailySnapshot,
   checkin,

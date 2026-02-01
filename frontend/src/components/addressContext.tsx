@@ -1,15 +1,18 @@
-﻿"use client";
+"use client";
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject, ReactNode } from "react";
 import { randomHex } from "../lib/logic/proof";
 import { resetStore, STORE_EVENT } from "../lib/store/localStore";
 
+const LAST_ADDR_KEY = "alive28:last_addr";
+const ADDR_SOURCE_KEY = "alive28:addr_source"; // "wallet" | "manual" — 仅 manual 在刷新后恢复
+
 type AddressContextValue = {
   address: string;
   input: string;
   setInput: (value: string) => void;
-  setAddress: (addr: string) => void;
+  setAddress: (addr: string, source?: "wallet" | "manual") => void;
   applyInputAsAddress: () => void;
   randomAddress: () => void;
   resetData: () => void;
@@ -30,8 +33,15 @@ export function AddressProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const last = window.localStorage.getItem("alive28:last_addr");
-    if (last) setAddressState(last.toLowerCase());
+    const last = window.localStorage.getItem(LAST_ADDR_KEY);
+    const source = window.localStorage.getItem(ADDR_SOURCE_KEY);
+    // 仅当来源是「手动输入」时才恢复；钱包来源或旧数据（无 source）不恢复，避免断开后重启仍看到数据
+    if (last && source === "manual") {
+      setAddressState(last.toLowerCase());
+    } else if (last) {
+      window.localStorage.removeItem(LAST_ADDR_KEY);
+      window.localStorage.removeItem(ADDR_SOURCE_KEY);
+    }
     setReady(true);
   }, []);
 
@@ -42,11 +52,17 @@ export function AddressProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(STORE_EVENT, handler);
   }, []);
 
-  const setAddress = (addr: string) => {
+  const setAddress = (addr: string, source: "wallet" | "manual" = "manual") => {
     const normalized = addr ? addr.toLowerCase() : "";
     setAddressState(normalized);
     if (typeof window !== "undefined") {
-      if (normalized) window.localStorage.setItem("alive28:last_addr", normalized);
+      if (normalized) {
+        window.localStorage.setItem(LAST_ADDR_KEY, normalized);
+        window.localStorage.setItem(ADDR_SOURCE_KEY, source);
+      } else {
+        window.localStorage.removeItem(LAST_ADDR_KEY);
+        window.localStorage.removeItem(ADDR_SOURCE_KEY);
+      }
     }
   };
 
@@ -56,13 +72,13 @@ export function AddressProvider({ children }: { children: ReactNode }) {
       alert("请输入一个有效的标识（至少10个字符）");
       return;
     }
-    setAddress(val);
+    setAddress(val, "manual");
   };
 
   const randomAddress = () => {
     const a = randomHex(20);
     setInput(a);
-    setAddress(a);
+    setAddress(a, "manual");
   };
 
   const resetData = () => {

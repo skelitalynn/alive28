@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useAddress } from "./addressContext";
 import WalletConnect from "./WalletConnect";
@@ -9,10 +9,10 @@ export default function AddressBar() {
   const { address, input, setInput, applyInputAsAddress, randomAddress, resetData, inputRef, setAddress } = useAddress();
   const { address: wagmiAddress, isConnected } = useAccount();
 
-  // 同步钱包地址到 addressContext
+  // 同步钱包地址到 addressContext（标记为钱包来源）
   useEffect(() => {
     if (isConnected && wagmiAddress) {
-      setAddress(wagmiAddress);
+      setAddress(wagmiAddress, "wallet");
     }
   }, [isConnected, wagmiAddress, setAddress]);
 

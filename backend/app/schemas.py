@@ -1,4 +1,4 @@
-﻿from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 
 
@@ -9,6 +9,7 @@ class ErrorResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     version: str
+    demo_mode: bool = False
 
 
 class DailyPromptResponse(BaseModel):

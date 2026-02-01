@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import NeedAddress from "../../../components/NeedAddress";
 import { api } from "../../../lib/api";
 import { useAddress } from "../../../components/addressContext";
 import { mintMilestoneNFT } from "../../../lib/nft/mintMilestone";
-import { getRandomMilestoneImage } from "../../../lib/nft/milestoneNFT";
+import { getMilestoneImageForId } from "../../../lib/nft/milestoneNFT";
 
 export default function MilestonePage() {
   const params = useParams();
@@ -25,6 +25,11 @@ export default function MilestonePage() {
 
   const [loading, setLoading] = useState(false);
   const [mintedImage, setMintedImage] = useState<string | null>(null);
+  const [demoMode, setDemoMode] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    api.getConfig().then((c) => setDemoMode(c.demo_mode)).catch(() => setDemoMode(false));
+  }, []);
 
   if (!ready) return null;
   if (!address) return <NeedAddress />;
@@ -46,35 +51,47 @@ export default function MilestonePage() {
     );
   }
 
+  // 本里程碑对应的图片（来自 public/nft，不依赖合约）
+  const milestoneImage = getMilestoneImageForId(milestoneId as 1 | 2 | 3);
+  const isDemoMode = demoMode === true;
+
   const handleMint = async () => {
     setLoading(true);
     try {
-      // DEMO_MODE：未连接钱包时走后端记录
+      // 未连接钱包：只走后端记录，并展示本地 NFT 图片（DEMO 行为）
       if (!isConnected || !wagmiAddress || !walletClient || !publicClient) {
         await api.mintMilestone({ address, milestoneId });
-        alert(`已记录里程碑 ${milestoneId}（DEMO_MODE）`);
+        setMintedImage(milestoneImage);
+        alert(`已记录里程碑 ${milestoneId}`);
         window.dispatchEvent(new Event("alive28:store"));
         setLoading(false);
         return;
       }
 
-      const imageUrl = getRandomMilestoneImage();
-      setMintedImage(imageUrl);
+      setMintedImage(milestoneImage);
 
+      // DEMO_MODE：连接钱包也仅走后端记录，不上链
+      if (isDemoMode) {
+        await api.mintMilestone({ address: wagmiAddress, milestoneId });
+        alert(`已记录里程碑 ${milestoneId}（DEMO 模式）`);
+        window.dispatchEvent(new Event("alive28:store"));
+        setLoading(false);
+        return;
+      }
+
+      // 正常模式：必须上链铸造
       const { txHash } = await mintMilestoneNFT(
         wagmiAddress as `0x${string}`,
         milestoneId,
         publicClient,
         walletClient
       );
-
       await api.mintMilestone({ address: wagmiAddress, milestoneId, txHash });
-
       alert(`✅ 里程碑 NFT 铸造成功\n交易: ${txHash.slice(0, 10)}...`);
       window.dispatchEvent(new Event("alive28:store"));
     } catch (e: any) {
       console.error("Mint error:", e);
-      alert(e?.message || "铸造失败，请重试");
+      alert(e?.message || "操作失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -111,26 +128,25 @@ export default function MilestonePage() {
       <h1 className="text-3xl font-bold text-pink-800 mb-4">{current.title}</h1>
       <p className="mt-4 text-pink-700 leading-relaxed text-lg">{current.message}</p>
 
-      {mintedImage && (
-        <div className="mt-6 animate-fade-in">
-          <div className="text-sm text-pink-700/70 mb-2">你的里程碑 NFT</div>
-          <div className="inline-block p-4 rounded-2xl bg-pink-50/50 border border-pink-100">
-            <img
-              src={mintedImage}
-              alt={`Milestone ${milestoneId} NFT`}
-              className="w-48 h-48 object-cover rounded-xl"
-            />
-          </div>
+      {/* 始终展示本里程碑对应的 NFT 图片（来自 public/nft，无需合约） */}
+      <div className="mt-6 animate-fade-in">
+        <div className="text-sm text-pink-700/70 mb-2">{mintedImage ? "你的里程碑 NFT" : "本里程碑 NFT"}</div>
+        <div className="inline-block p-4 rounded-2xl bg-pink-50/50 border border-pink-100">
+          <img
+            src={milestoneImage}
+            alt={`Milestone ${milestoneId} NFT`}
+            className="w-48 h-48 object-contain rounded-xl"
+          />
         </div>
-      )}
+      </div>
 
       <div className="mt-8 flex justify-center gap-4 flex-wrap">
         <button
           className="px-8 py-4 rounded-2xl bg-gradient-to-r from-pink-200 to-rose-200 text-pink-700 font-semibold hover:from-pink-300 hover:to-rose-300 transition-all shadow-sm transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed btn-press"
           onClick={handleMint}
-          disabled={loading}
+          disabled={loading || demoMode === null}
         >
-          {loading ? "处理中..." : isConnected ? "铸造里程碑 NFT" : "记录里程碑"}
+          {loading ? "处理中..." : demoMode === null ? "加载中..." : isConnected && !isDemoMode ? "铸造里程碑 NFT" : "记录里程碑"}
         </button>
 
         {nextDay && (
@@ -151,9 +167,6 @@ export default function MilestonePage() {
         )}
       </div>
 
-      {!isConnected && (
-        <div className="mt-4 text-xs text-pink-600/70">未连接钱包时仅记录进度，不会上链</div>
-      )}
     </div>
   );
 }

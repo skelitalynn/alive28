@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from datetime import datetime
 import os
@@ -125,7 +125,7 @@ async def _invoke_graph(state: Dict[str, Any]):
 
 @router.get("/health", response_model=HealthResponse)
 def health():
-    return {"status": "ok", "version": settings.version}
+    return {"status": "ok", "version": settings.version, "demo_mode": settings.demo_mode}
 
 
 @router.get("/dailyPrompt", response_model=DailyPromptResponse)

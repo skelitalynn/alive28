@@ -1,5 +1,5 @@
 import { writeContract, waitForTransactionReceipt, type Address, type PublicClient, type WalletClient } from "viem";
-import { getMilestoneNFTContract, generateTokenId, getRandomMilestoneImage, generateMilestoneMetadata } from "./milestoneNFT";
+import { getMilestoneNFTContract, generateTokenId, getMilestoneImageForId, generateMilestoneMetadata } from "./milestoneNFT";
 
 /**
  * Mint milestone NFT on-chain.
@@ -13,7 +13,7 @@ export async function mintMilestoneNFT(
   aiReflection?: { note: string; next: string }
 ): Promise<{ txHash: string; imageUrl: string; tokenId: bigint }> {
   try {
-    const imageUrl = getRandomMilestoneImage();
+    const imageUrl = getMilestoneImageForId(milestoneId as 1 | 2 | 3);
     const tokenId = generateTokenId(milestoneId, address);
     const tokenURI = generateMilestoneMetadata(milestoneId, imageUrl, address, aiReflection);
 

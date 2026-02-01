@@ -1,4 +1,4 @@
-﻿import type { ApiClient, CheckinResult, DailySnapshot, HomeSnapshot, ProgressData, ReportData } from "./client";
+import type { ApiClient, CheckinResult, DailySnapshot, HomeSnapshot, ProgressData, ReportData } from "./client";
 import type { DailyLog, User } from "../store/schema";
 import { tasks } from "../tasks/tasks";
 import { keccakProofHash, makeSaltHex, mockTxHash } from "../logic/proof";
@@ -291,7 +291,12 @@ async function getReport(params: { address: string; range: "week" | "final" }): 
   return { title, reportText, recentLogs, chartByDay: byDay, range };
 }
 
+async function getConfig(): Promise<{ demo_mode: boolean }> {
+  return { demo_mode: false };
+}
+
 export const mockClient: ApiClient = {
+  getConfig,
   getHomeSnapshot,
   getDailySnapshot,
   checkin,
