@@ -96,7 +96,7 @@ export function getUser(store: Store, address: string): User {
       lastDateKey: null,
       dayMintCount: 0,
       finalMinted: false,
-      finalSbtTxHash: null,
+      finalNftTxHash: null,
       milestones: {}
     };
     saveStore(store);

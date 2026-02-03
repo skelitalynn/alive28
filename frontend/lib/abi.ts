@@ -11,7 +11,7 @@ export const ProofRegistryABI = [
   }
 ];
 
-export const RestartBadgeSBTABI = [
+export const RestartBadgeNFTABI = [
   {
     "type": "function",
     "name": "mintDay",

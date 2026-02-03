@@ -7,8 +7,8 @@ import { tasks } from "../tasks/tasks";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111");
 const PROOF_REGISTRY = process.env.NEXT_PUBLIC_PROOF_REGISTRY || "0x0000000000000000000000000000000000000000";
-const BADGE_SBT = process.env.NEXT_PUBLIC_BADGE_SBT || "0x0000000000000000000000000000000000000000";
-const MILESTONE_NFT = process.env.NEXT_PUBLIC_MILESTONE_NFT || BADGE_SBT;
+const BADGE_NFT = process.env.NEXT_PUBLIC_BADGE_NFT || "0x0000000000000000000000000000000000000000";
+const MILESTONE_NFT = process.env.NEXT_PUBLIC_MILESTONE_NFT || BADGE_NFT;
 
 const ProofRegistryAbi = [
   {
@@ -109,7 +109,7 @@ function mapLog(raw: any): DailyLog {
     proofHash: raw.proofHash ?? raw.proof_hash,
     status: raw.status,
     txHash: raw.txHash ?? raw.tx_hash ?? null,
-    daySbtTxHash: raw.daySbtTxHash ?? raw.day_sbt_tx_hash ?? null,
+    dayNftTxHash: raw.dayNftTxHash ?? raw.day_nft_tx_hash ?? null,
     nftImage: raw.nftImage ?? raw.nft_image ?? null,
     createdAt: raw.createdAt ?? raw.created_at
   };
@@ -196,16 +196,16 @@ async function mintDay(params: { address: string }): Promise<DailyLog> {
   const log = snapshot.log;
   if (!log) throw new Error("请先 checkin");
   if (!log.txHash) throw new Error("请先提交 Proof（submitProof）");
-  if (log.daySbtTxHash) throw new Error("今日 DaySBT 已 mint（幂等）");
+  if (log.dayNftTxHash) throw new Error("今日 DayNFT 已 mint（幂等）");
 
   const data = encodeFunctionData({
     abi: RestartBadgeSbtAbi,
     functionName: "mintDay",
     args: [log.dayIndex]
   });
-  const txHash = await sendTx({ to: BADGE_SBT, data });
+  const txHash = await sendTx({ to: BADGE_NFT, data });
 
-  await fetchJson("/sbt/confirm", {
+  await fetchJson("/nft/confirm", {
     method: "POST",
     body: JSON.stringify({
       address: params.address,
@@ -213,7 +213,7 @@ async function mintDay(params: { address: string }): Promise<DailyLog> {
       dayIndex: log.dayIndex,
       txHash,
       chainId: CHAIN_ID,
-      contractAddress: BADGE_SBT
+      contractAddress: BADGE_NFT
     })
   });
 
@@ -237,7 +237,7 @@ async function getProgress(params: { address: string }): Promise<ProgressData> {
     mintableDayIndex: res.mintableDayIndex ?? res.mintable_day_index ?? null,
     shouldComposeFinal: res.shouldComposeFinal ?? res.should_compose_final ?? false,
     finalMinted: res.finalMinted ?? res.final_minted ?? false,
-    finalSbtTxHash: res.finalSbtTxHash ?? res.final_sbt_tx_hash ?? null
+    finalNftTxHash: res.finalNftTxHash ?? res.final_nft_tx_hash ?? null
   };
 }
 
@@ -249,7 +249,7 @@ function toUser(progress: any): User {
     lastDateKey: progress.lastDateKey ?? progress.last_date_key ?? null,
     dayMintCount: progress.dayMintCount ?? progress.day_mint_count ?? 0,
     finalMinted: progress.finalMinted ?? progress.final_minted ?? false,
-    finalSbtTxHash: progress.finalSbtTxHash ?? progress.final_sbt_tx_hash ?? null,
+    finalNftTxHash: progress.finalNftTxHash ?? progress.final_nft_tx_hash ?? null,
     milestones: mapMilestones(progress.milestones)
   };
 }
@@ -260,16 +260,16 @@ async function composeFinal(params: { address: string }): Promise<User> {
     functionName: "composeFinal",
     args: []
   });
-  const txHash = await sendTx({ to: BADGE_SBT, data });
+  const txHash = await sendTx({ to: BADGE_NFT, data });
 
-  await fetchJson("/sbt/confirm", {
+  await fetchJson("/nft/confirm", {
     method: "POST",
     body: JSON.stringify({
       address: params.address,
       type: "FINAL",
       txHash,
       chainId: CHAIN_ID,
-      contractAddress: BADGE_SBT
+      contractAddress: BADGE_NFT
     })
   });
   const progress = await getProgressRaw(params.address);

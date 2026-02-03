@@ -18,8 +18,8 @@ from .schemas import (
     CheckinResponse,
     TxConfirmRequest,
     TxConfirmResponse,
-    SbtConfirmRequest,
-    SbtConfirmResponse,
+    NftConfirmRequest,
+    NftConfirmResponse,
     ProgressResponse,
     ReportResponse,
     MetadataResponse,
@@ -103,7 +103,7 @@ def _log_to_response(log: DailyLog) -> Dict[str, Any]:
         "proofHash": log.proof_hash,
         "status": log.status,
         "txHash": log.tx_hash,
-        "daySbtTxHash": log.day_sbt_tx_hash,
+        "dayNftTxHash": log.day_nft_tx_hash,
         "createdAt": log.created_at.isoformat() + "Z",
     }
 
@@ -317,8 +317,8 @@ async def tx_confirm(payload: TxConfirmRequest, session: Session = Depends(get_s
     return {"ok": True}
 
 
-@router.post("/sbt/confirm", response_model=SbtConfirmResponse)
-def sbt_confirm(payload: SbtConfirmRequest, session: Session = Depends(get_session)):
+@router.post("/nft/confirm", response_model=NftConfirmResponse)
+def nft_confirm(payload: NftConfirmRequest, session: Session = Depends(get_session)):
     address = _require_address(payload.address)
     if payload.type == "DAY":
         if payload.dayIndex is None:
@@ -332,9 +332,9 @@ def sbt_confirm(payload: SbtConfirmRequest, session: Session = Depends(get_sessi
         ).first()
         if not log:
             _http_error(404, "NOT_FOUND", "log not found for dayIndex")
-        if log.day_sbt_tx_hash:
+        if log.day_nft_tx_hash:
             return {"ok": True}
-        log.day_sbt_tx_hash = payload.txHash
+        log.day_nft_tx_hash = payload.txHash
         session.add(log)
         progress = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
         if progress:
@@ -346,9 +346,9 @@ def sbt_confirm(payload: SbtConfirmRequest, session: Session = Depends(get_sessi
         progress = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
         if not progress:
             _http_error(404, "NOT_FOUND", "user not found")
-        if progress.final_sbt_tx_hash:
+        if progress.final_nft_tx_hash:
             return {"ok": True}
-        progress.final_sbt_tx_hash = payload.txHash
+        progress.final_nft_tx_hash = payload.txHash
         progress.final_minted = True
         progress.updated_at = datetime.utcnow()
         session.add(progress)
@@ -432,15 +432,15 @@ async def progress(address: str, session: Session = Depends(get_session)):
             DailyLog.challenge_id == settings.challenge_id,
         )
     ).all()
-    day_mint_count = sum(1 for l in logs if getattr(l, "day_sbt_tx_hash", None))
+    day_mint_count = sum(1 for l in logs if getattr(l, "day_nft_tx_hash", None))
     mintable_day_index = None
     for d in range(1, 29):
         log_d = next((l for l in logs if l.day_index == d), None)
-        if log_d and log_d.tx_hash and not getattr(log_d, "day_sbt_tx_hash", None):
+        if log_d and log_d.tx_hash and not getattr(log_d, "day_nft_tx_hash", None):
             mintable_day_index = d
             break
     should_mint_day = mintable_day_index is not None
-    should_compose_final = (day_mint_count == 28) and not (progress.final_minted or progress.final_sbt_tx_hash)
+    should_compose_final = (day_mint_count == 28) and not (progress.final_minted or progress.final_nft_tx_hash)
 
     return {
         "dateKey": result.get("dateKey") or date_key_for_timezone(progress.timezone),
@@ -450,8 +450,8 @@ async def progress(address: str, session: Session = Depends(get_session)):
         "shouldMintDay": should_mint_day,
         "mintableDayIndex": mintable_day_index,
         "shouldComposeFinal": should_compose_final,
-        "finalMinted": bool(progress.final_minted or progress.final_sbt_tx_hash),
-        "finalSbtTxHash": progress.final_sbt_tx_hash,
+        "finalMinted": bool(progress.final_minted or progress.final_nft_tx_hash),
+        "finalNftTxHash": progress.final_nft_tx_hash,
         "milestones": milestones,
         "startDateKey": progress.start_date_key,
     }

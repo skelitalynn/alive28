@@ -8,7 +8,7 @@ interface IProofRegistry {
     function getProof(address user, uint16 dayIndex) external view returns (bytes32);
 }
 
-contract RestartBadgeSBT is ERC721 {
+contract RestartBadgeNFT is ERC721 {
     IProofRegistry public immutable proofRegistry;
     string public baseURI;
 
@@ -65,10 +65,7 @@ contract RestartBadgeSBT is ERC721 {
     }
 
     function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
-        address from = _ownerOf(tokenId);
-        if (from != address(0) && to != address(0)) {
-            revert("SBT: non-transferable");
-        }
+        // NFT: allow transfers
         return super._update(to, tokenId, auth);
     }
 }

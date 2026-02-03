@@ -26,7 +26,7 @@ export type ProgressData = {
   mintableDayIndex: number | null;
   shouldComposeFinal: boolean;
   finalMinted: boolean;
-  finalSbtTxHash: string | null;
+  finalNftTxHash: string | null;
 };
 
 export type ReportData = {

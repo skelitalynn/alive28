@@ -65,7 +65,7 @@ npm run dev
 | NEXT_PUBLIC_API_BASE | 后端 API 地址 | http://127.0.0.1:8000 |
 | NEXT_PUBLIC_CHAIN_ID | 链 ID（上链时） | 11155111 |
 | NEXT_PUBLIC_PROOF_REGISTRY | ProofRegistry 合约地址 | 0x... |
-| NEXT_PUBLIC_BADGE_SBT | RestartBadgeSBT 合约地址 | 0x... |
+| NEXT_PUBLIC_BADGE_NFT | RestartBadgeNFT 合约地址 | 0x... |
 | NEXT_PUBLIC_MILESTONE_NFT | 里程碑 NFT 合约地址 | 0x... |
 
 前端通过 `GET /health` 的 `demo_mode` 与后端同步：DEMO 模式下里程碑页仅记录不上链；非 DEMO 模式下连接钱包需上链铸造。
@@ -100,7 +100,7 @@ project/
 | 页面 | 说明 |
 |------|------|
 | `/` | 欢迎页、当前 Day 入口、进度/周报入口 |
-| `/daily/[dayIndex]` | 当日任务、输入感受、Reflection 反馈、保存记录、完成今日（可铸 Day SBT） |
+| `/daily/[dayIndex]` | 当日任务、输入感受、Reflection 反馈、保存记录、完成今日（可铸 Day NFT） |
 | `/progress` | 连续天数、已完成天数、可铸造日、里程碑资格 |
 | `/report` | 周报（range=week）、结营报告（range=final），含图表 |
 | `/milestone/1|2|final` | 7 / 14 / 28 天里程碑，展示或铸造对应 NFT |
@@ -117,7 +117,7 @@ project/
 | GET | /dailySnapshot | 某日快照（address, dayIndex） |
 | POST | /checkin | 打卡（address, dayIndex, text 等） |
 | POST | /tx/confirm | Proof 上链交易确认（写回 DailyLog.tx_hash） |
-| POST | /sbt/confirm | Day/Final SBT 铸造确认（写回 day_sbt_tx_hash 或 final_sbt_tx_hash） |
+| POST | /nft/confirm | Day/Final NFT 铸造确认（写回 day_nft_tx_hash 或 final_nft_tx_hash） |
 | POST | /milestone/mint | 里程碑铸造记录 |
 | GET | /progress | 进度（address） |
 | GET | /report | 周报/结营报告（address, range） |
@@ -140,11 +140,11 @@ cd contracts
 forge install OpenZeppelin/openzeppelin-contracts
 # 复制 .env.example 为 .env，填写 PRIVATE_KEY、RPC_URL（如 Sepolia）
 cp .env.example .env
-# 可选：SBT_BASE_URI 用于 RestartBadgeSBT 的 tokenURI 前缀
+# 可选：NFT_BASE_URI 用于 RestartBadgeNFT 的 tokenURI 前缀
 forge script script/Deploy.s.sol --rpc-url $env:RPC_URL --private-key $env:PRIVATE_KEY --broadcast
 ```
 
-部署后会输出三个地址：ProofRegistry、RestartBadgeSBT、MilestoneNFT。
+部署后会输出三个地址：ProofRegistry、RestartBadgeNFT、MilestoneNFT。
 
 ### 配置前端与后端
 
@@ -154,7 +154,7 @@ forge script script/Deploy.s.sol --rpc-url $env:RPC_URL --private-key $env:PRIVA
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
 NEXT_PUBLIC_CHAIN_ID=11155111
 NEXT_PUBLIC_PROOF_REGISTRY=<ProofRegistry 地址>
-NEXT_PUBLIC_BADGE_SBT=<RestartBadgeSBT 地址>
+NEXT_PUBLIC_BADGE_NFT=<RestartBadgeNFT 地址>
 NEXT_PUBLIC_MILESTONE_NFT=<MilestoneNFT 地址>
 ```
 
@@ -163,16 +163,16 @@ NEXT_PUBLIC_MILESTONE_NFT=<MilestoneNFT 地址>
 ### 上链流程（用户侧）
 
 1. **每日打卡**：输入感受 → 生成反馈 → 保存记录 → 连接钱包后上链提交 → POST `/tx/confirm`。
-2. **完成今日**：当日已提交 Proof 后，调用 `RestartBadgeSBT.mintDay(dayIndex)` → POST `/sbt/confirm`（type=DAY, dayIndex）。
-3. **结营**：28 天 Day SBT 均已铸造后，调用 `RestartBadgeSBT.composeFinal()` → POST `/sbt/confirm`（type=FINAL）。
+2. **完成今日**：当日已提交 Proof 后，调用 `RestartBadgeNFT.mintDay(dayIndex)` → POST `/nft/confirm`（type=DAY, dayIndex）。
+3. **结营**：28 天 Day NFT 均已铸造后，调用 `RestartBadgeNFT.composeFinal()` → POST `/nft/confirm`（type=FINAL）。
 4. **里程碑 NFT**：达到 7/14/28 天后，调用 `MilestoneNFT.mint(to, tokenId, tokenURI)` → POST `/milestone/mint`。
 
 ## 数据库提示（旧库升级）
 
-后端新增字段 `DailyLog.day_sbt_tx_hash`。若使用已有 `alive.db`，需删除 `backend/alive.db` 后重启后端让其重建表，或执行：
+后端新增字段 `DailyLog.day_nft_tx_hash`。若使用已有 `alive.db`，需删除 `backend/alive.db` 后重启后端让其重建表，或执行：
 
 ```sql
-ALTER TABLE dailylog ADD COLUMN day_sbt_tx_hash VARCHAR(66);
+ALTER TABLE dailylog ADD COLUMN day_nft_tx_hash VARCHAR(66);
 ```
 
 ## 文档

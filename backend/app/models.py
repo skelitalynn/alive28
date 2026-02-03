@@ -16,7 +16,7 @@ class UserProgress(SQLModel, table=True):
     last_day_index: Optional[int] = Field(default=None)
     day_mint_count: int = Field(default=0)
     final_minted: bool = Field(default=False)
-    final_sbt_tx_hash: Optional[str] = Field(default=None, max_length=66)
+    final_nft_tx_hash: Optional[str] = Field(default=None, max_length=66)
     milestones: Dict[str, Optional[str]] = Field(
         default_factory=lambda: {"1": None, "2": None, "3": None},
         sa_column=Column(JSON)
@@ -43,6 +43,6 @@ class DailyLog(SQLModel, table=True):
     chain_id: Optional[int] = Field(default=None)
     contract_address: Optional[str] = Field(default=None, max_length=42)
     tx_hash: Optional[str] = Field(default=None, max_length=66)
-    day_sbt_tx_hash: Optional[str] = Field(default=None, max_length=66)
+    day_nft_tx_hash: Optional[str] = Field(default=None, max_length=66)
     block_number: Optional[int] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)

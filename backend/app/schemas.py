@@ -69,7 +69,7 @@ class DailyLogResponse(BaseModel):
     proofHash: str
     status: str
     txHash: Optional[str] = None
-    daySbtTxHash: Optional[str] = None
+    dayNftTxHash: Optional[str] = None
     createdAt: str
 
 
@@ -104,7 +104,7 @@ class TxConfirmResponse(BaseModel):
     ok: bool
 
 
-class SbtConfirmRequest(BaseModel):
+class NftConfirmRequest(BaseModel):
     address: str
     type: str  # "DAY" | "FINAL"
     dayIndex: Optional[int] = None
@@ -113,7 +113,7 @@ class SbtConfirmRequest(BaseModel):
     contractAddress: str
 
 
-class SbtConfirmResponse(BaseModel):
+class NftConfirmResponse(BaseModel):
     ok: bool
 
 
@@ -139,7 +139,7 @@ class ProgressResponse(BaseModel):
     mintableDayIndex: Optional[int] = None
     shouldComposeFinal: bool = False
     finalMinted: bool = False
-    finalSbtTxHash: Optional[str] = None
+    finalNftTxHash: Optional[str] = None
     milestones: Dict[str, Optional[str]]
     startDateKey: Optional[str] = None
 

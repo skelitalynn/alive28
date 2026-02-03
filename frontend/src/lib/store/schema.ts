@@ -24,7 +24,7 @@ export type DailyLog = {
   proofHash: string;
   status: DailyLogStatus;
   txHash: string | null;
-  daySbtTxHash: string | null;
+  dayNftTxHash: string | null;
   nftImage: string | null; // 生成的NFT图片 base64 数据
   createdAt: string;
 };
@@ -36,7 +36,7 @@ export type User = {
   lastDateKey: string | null;
   dayMintCount: number;
   finalMinted: boolean;
-  finalSbtTxHash: string | null;
+  finalNftTxHash: string | null;
   milestones: Record<number, string>; // key: 1 (Week 1), 2 (Week 2), value: txHash
 };
 

@@ -200,10 +200,10 @@ export default function DailyPage() {
           <div className="text-sm font-medium text-pink-700 mb-3">写下你的感受</div>
           <textarea
             className="w-full min-h-[140px] px-4 py-3 rounded-xl border border-pink-100 bg-white focus:outline-none focus:ring-2 focus:ring-pink-200 text-sm text-pink-800 placeholder:text-pink-400/60 resize-none transition-all"
-            placeholder={log?.daySbtTxHash ? "今日已完成，可以查看反馈" : "记录下此刻的想法和感受吧..."}
+            placeholder={log?.dayNftTxHash ? "今日已完成，可以查看反馈" : "记录下此刻的想法和感受吧..."}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            disabled={!!log?.daySbtTxHash}
+            disabled={!!log?.dayNftTxHash}
           />
           <div className="mt-2 text-xs text-pink-500/70 text-right">{text.length}/280</div>
 
@@ -211,7 +211,7 @@ export default function DailyPage() {
             <button
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-200 to-rose-200 text-pink-700 text-sm font-medium hover:from-pink-300 hover:to-rose-300 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed btn-press"
               onClick={handleCheckin}
-              disabled={!text.trim() || !!log?.daySbtTxHash}
+              disabled={!text.trim() || !!log?.dayNftTxHash}
             >
               {already ? "更新反馈" : "生成反馈"}
             </button>
@@ -219,21 +219,21 @@ export default function DailyPage() {
               <>
                 <button
                   className="px-5 py-3 rounded-xl border border-pink-100 bg-white text-pink-700 text-sm hover:bg-pink-50/50 transition-all disabled:opacity-50 btn-press"
-                  disabled={!!log?.daySbtTxHash}
+                  disabled={!!log?.dayNftTxHash}
                   onClick={handleSubmitProof}
                 >
                   {log?.status === "SUBMITTED" ? "✓ 已保存" : "保存记录"}
                 </button>
                 <button
                   className="px-5 py-3 rounded-xl border border-pink-100 bg-white text-pink-700 text-sm hover:bg-pink-50/50 transition-all disabled:opacity-50 btn-press"
-                  disabled={!!log?.daySbtTxHash}
+                  disabled={!!log?.dayNftTxHash}
                   onClick={() => {
                     if (window.confirm("确认完成今日任务并铸造 NFT 吗？\n\n铸造后今日感受将无法再修改！")) {
                       handleMintDay();
                     }
                   }}
                 >
-                  {log?.daySbtTxHash ? "✓ 已完成" : "完成今日"}
+                  {log?.dayNftTxHash ? "✓ 已完成" : "完成今日"}
                 </button>
               </>
             )}
@@ -346,7 +346,7 @@ export default function DailyPage() {
             </div>
           )}
 
-          {log?.daySbtTxHash && (
+          {log?.dayNftTxHash && (
             <div className="p-3 rounded-xl bg-pink-50/30 border border-pink-100 animate-fade-in">
               <div className="text-xs text-pink-600/70">任务状态</div>
               <div className="mt-1 text-sm font-medium text-pink-700">🎉 已完成</div>

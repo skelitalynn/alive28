@@ -26,13 +26,13 @@ export async function confirmTx(payload: any) {
   return res.json();
 }
 
-export async function confirmSbt(payload: any) {
-  const res = await fetch(`${API_BASE}/sbt/confirm`, {
+export async function confirmNft(payload: any) {
+  const res = await fetch(`${API_BASE}/nft/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
-  if (!res.ok) throw new Error("sbt confirm failed");
+  if (!res.ok) throw new Error("nft confirm failed");
   return res.json();
 }
 

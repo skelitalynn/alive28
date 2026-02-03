@@ -126,7 +126,7 @@ async function checkin(params: { address: string; dayIndex: number; text: string
     proofHash,
     status: "CREATED",
     txHash: null,
-    daySbtTxHash: null,
+    dayNftTxHash: null,
     nftImage: null,
     createdAt: new Date().toISOString()
   };
@@ -176,9 +176,9 @@ async function mintDay(params: { address: string }): Promise<DailyLog> {
     throw new Error("请先 checkin");
   }
   if (!log.txHash) throw new Error("请先提交 Proof（submitProof）");
-  if (log.daySbtTxHash) throw new Error("今日 DaySBT 已 mint（幂等）");
+  if (log.dayNftTxHash) throw new Error("今日 DayNFT 已 mint（幂等）");
 
-  log.daySbtTxHash = mockTxHash(`tx:sbt:day:${log.dayIndex}:${Date.now()}`);
+  log.dayNftTxHash = mockTxHash(`tx:nft:day:${log.dayIndex}:${Date.now()}`);
   user.dayMintCount = Math.min(28, (user.dayMintCount || 0) + 1);
 
   store.users[address.toLowerCase()] = user;
@@ -201,7 +201,7 @@ async function getProgress(params: { address: string }): Promise<ProgressData> {
     .map((l) => l.dayIndex)
     .sort((a, b) => a - b);
 
-  const shouldMintDay = todayCheckedIn && !todayLog?.daySbtTxHash;
+  const shouldMintDay = todayCheckedIn && !todayLog?.dayNftTxHash;
   const mintableDayIndex = todayLog?.dayIndex || null;
   const shouldComposeFinal = user.dayMintCount === 28 && !user.finalMinted;
 
@@ -214,7 +214,7 @@ async function getProgress(params: { address: string }): Promise<ProgressData> {
     mintableDayIndex,
     shouldComposeFinal,
     finalMinted: user.finalMinted,
-    finalSbtTxHash: user.finalSbtTxHash
+    finalNftTxHash: user.finalNftTxHash
   };
 }
 
@@ -227,13 +227,13 @@ async function composeFinal(params: { address: string }): Promise<User> {
   if (user.dayMintCount !== 28) throw new Error("dayMintCount 未到 28");
 
   const logs = store.logs.filter((l) => l.address === address.toLowerCase() && l.challengeId === CHALLENGE_ID);
-  const mintedDays = new Set(logs.filter((l) => l.daySbtTxHash).map((l) => l.dayIndex));
+  const mintedDays = new Set(logs.filter((l) => l.dayNftTxHash).map((l) => l.dayIndex));
   for (let i = 1; i <= 28; i += 1) {
-    if (!mintedDays.has(i)) throw new Error(`缺少 Day ${i} 的 DaySBT mint 记录`);
+    if (!mintedDays.has(i)) throw new Error(`缺少 Day ${i} 的 DayNFT mint 记录`);
   }
 
   user.finalMinted = true;
-  user.finalSbtTxHash = mockTxHash(`tx:sbt:final:${Date.now()}`);
+  user.finalNftTxHash = mockTxHash(`tx:nft:final:${Date.now()}`);
   store.users[address.toLowerCase()] = user;
   saveStore(store);
 
@@ -255,7 +255,7 @@ async function mintMilestone(params: { address: string; milestoneId: number }): 
   if (count < required) throw new Error(`打卡天数不足（需 ${required} 天）`);
 
   if (!user.milestones) user.milestones = {};
-  user.milestones[milestoneId] = mockTxHash(`tx:sbt:milestone:${milestoneId}:${Date.now()}`);
+  user.milestones[milestoneId] = mockTxHash(`tx:nft:milestone:${milestoneId}:${Date.now()}`);
 
   store.users[address.toLowerCase()] = user;
   saveStore(store);
@@ -273,7 +273,7 @@ async function getReport(params: { address: string; range: "week" | "final" }): 
   const recentLogs = logs.slice(-6).reverse();
 
   const total = logs.length;
-  const minted = logs.filter((l) => l.daySbtTxHash).length;
+  const minted = logs.filter((l) => l.dayNftTxHash).length;
   const streak = store.users[address.toLowerCase()]?.streak || 0;
   const reportText = (() => {
     if (!total) return "你还没有记录，去开始你的第一天吧！每一小步都是成长。";

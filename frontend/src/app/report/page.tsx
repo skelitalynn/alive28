@@ -153,7 +153,7 @@ function ReportContent() {
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div className="text-sm font-medium text-pink-700">第 {l.dayIndex} 天</div>
                   <div className="text-xs text-pink-600/70">
-                    {l.daySbtTxHash && <span className="inline-block mr-2">✓ 已完成</span>}
+                    {l.dayNftTxHash && <span className="inline-block mr-2">✓ 已完成</span>}
                     {l.txHash && <span className="inline-block">✓ 已保存</span>}
                   </div>
                 </div>
