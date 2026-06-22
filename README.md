@@ -37,6 +37,4 @@ Copy-Item frontend\.env.example frontend\.env.local
 npm --prefix frontend ci
 npm --prefix frontend run dev
 ```
-
-访问 `http://localhost:3000`。完整环境变量、合约和故障排查见
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
