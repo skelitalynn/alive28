@@ -1,6 +1,6 @@
 # 后续实施计划
 
-状态：设计完成，尚未开始代码修改。
+状态：Phase 1 已于 2026-06-22 完成；Phase 2 待开始。
 硬约束：正式 Agent 流程必须使用 SpoonOS。
 
 ## 目标
@@ -478,6 +478,8 @@ validatorVersion
 
 完成条件：现有测试和构建有可复现基线。
 
+状态：已恢复后端、前端与 Foundry 本地验证基线，并锁定 `spoon-ai-sdk==0.4.10`。
+
 ### Phase 1：Reflection Safety
 
 - 扩展 Graph State。
@@ -487,6 +489,8 @@ validatorVersion
 - 建立安全评测集。
 
 完成条件：所有主要路由都有自动测试，危机和无意义输入不会生成 Proof。
+
+状态：已完成。实现与验证证据见 `F-002`。
 
 ### Phase 2：Checkpoint、重试和可观测性
 
@@ -527,19 +531,19 @@ validatorVersion
 
 ## 下一任务建议
 
-下一次开始代码修改时，只创建并激活一个功能项：
+下一次代码修改只创建并激活一个功能项：
 
 ```text
-F-002 Reflection Safety Graph
+F-003 Recoverable Checkin Execution
 ```
 
 建议行为验收：
 
 ```text
-普通有效输入生成并保存合规 Reflection；
-clarify/reject 和 crisis 输入均不生成 Proof、不更新 streak；
-非法模型输出最多修复一次，随后使用对应安全 fallback。
+相同 checkin_id 从任意可恢复节点重放时，
+不会重复调用已完成副作用，不会重复创建 DailyLog、Proof 或更新 streak；
+节点耗时、重试次数、模型与 Prompt 版本、fallback 原因可追踪。
 ```
 
-实际测试文件和验证命令应在开始实现、确定测试路径后通过
-`scripts/harness/task.py add` 添加。当前不提前写入 `FEATURES.json`，避免不可执行的伪验收命令。
+实际测试文件和验证命令在开始实现、确定测试路径后通过
+`scripts/harness/task.py add` 添加，不提前写入 `FEATURES.json`。

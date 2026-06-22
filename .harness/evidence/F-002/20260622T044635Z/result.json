@@ -1,0 +1,14 @@
+{
+  "feature_id": "F-002",
+  "verified_at": "20260622T044635Z",
+  "passed": true,
+  "commands": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_reflection_safety.py backend\\app\\tests\\test_core.py -q",
+      "returncode": 0,
+      "log": ".harness\\evidence\\F-002\\20260622T044635Z\\command-01.log"
+    }
+  ],
+  "git_head": "c4a101f",
+  "working_tree_dirty": true
+}

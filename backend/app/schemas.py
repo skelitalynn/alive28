@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel
 
 
@@ -74,8 +74,17 @@ class DailyLogResponse(BaseModel):
 
 
 class CheckinResponse(BaseModel):
-    log: DailyLogResponse
+    outcome: Literal[
+        "accepted",
+        "already_checked_in",
+        "clarify",
+        "rejected",
+        "crisis_redirected",
+    ]
+    log: Optional[DailyLogResponse] = None
     alreadyCheckedIn: bool
+    message: Optional[str] = None
+    reflection: Optional[Reflection] = None
 
 
 class DailySnapshotResponse(BaseModel):

@@ -1,4 +1,4 @@
-import { writeContract, waitForTransactionReceipt, type Address, type PublicClient, type WalletClient } from "viem";
+import { type Address, type PublicClient, type WalletClient } from "viem";
 import { getMilestoneNFTContract, generateTokenId, getMilestoneImageForId, generateMilestoneMetadata } from "./milestoneNFT";
 
 /**
@@ -22,7 +22,9 @@ export async function mintMilestoneNFT(
       throw new Error("NFT 合约地址未配置，请设置 NEXT_PUBLIC_MILESTONE_NFT");
     }
 
-    const hash = await writeContract(walletClient, {
+    const hash = await walletClient.writeContract({
+      account: address,
+      chain: walletClient.chain,
       address: contractAddress as Address,
       abi: [
         {
@@ -41,7 +43,7 @@ export async function mintMilestoneNFT(
       args: [address, tokenId, tokenURI]
     });
 
-    const receipt = await waitForTransactionReceipt(publicClient, {
+    const receipt = await publicClient.waitForTransactionReceipt({
       hash,
       confirmations: 1
     });

@@ -88,7 +88,7 @@ async function checkin(params: { address: string; dayIndex: number; text: string
   // 检查该日期和 dayIndex 是否已经有日志
   const exist = findLog(store, address, dateKey);
   if (exist && exist.dayIndex === dayIndex) {
-    return { log: exist, alreadyCheckedIn: true };
+    return { outcome: "already_checked_in", log: exist, alreadyCheckedIn: true };
   }
 
   const di = dayIndex;
@@ -135,7 +135,7 @@ async function checkin(params: { address: string; dayIndex: number; text: string
   store.users[address.toLowerCase()] = user;
   saveStore(store);
 
-  return { log: logObj, alreadyCheckedIn: false };
+  return { outcome: "accepted", log: logObj, alreadyCheckedIn: false };
 }
 
 async function submitProof(params: { address: string }): Promise<DailyLog> {

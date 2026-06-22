@@ -36,8 +36,9 @@ Wallet ---------- Solidity contracts
 
 - `backend/app/routes.py`：HTTP 接口、输入基础检查和响应映射。
 - `backend/app/graph/agent.py`：固定工作流和条件跳转。
-- `backend/app/graph/nodes.py`：任务读取、反思、Proof、进度和报告节点。
-- `backend/app/services/reflection.py`：Reflection Prompt、JSON 提取、截断和 fallback。
+- `backend/app/graph/nodes.py`：任务读取、风险与质量分流、Reflection 校验与修复、Proof、进度和报告节点。
+- `backend/app/services/reflection_safety.py`：输入风险规则、SpoonOS 结构化分类、Prompt 注入和输入质量判断。
+- `backend/app/services/reflection.py`：Reflection Prompt、严格 Schema、语义校验、受限重试、修复和 fallback。
 - `backend/app/services/report.py`：周报与结营报告生成。
 - `backend/app/services/nft_image.py`：Pollinations、Gemini 和 SVG fallback。
 - `backend/app/models.py`：`UserProgress` 与 `DailyLog`。
@@ -73,14 +74,18 @@ Graph 是确定性工作流。LLM 只参与 Reflection 和报告文本，不控�
 POST /checkin
   -> DailyPrompt
   -> UserInput normalization
-  -> Reflection LLM
-  -> ProofBuilder
-  -> ProgressUpdate / SQLite commit
+  -> RiskClassify
+  -> CrisisResponse / InputQuality
+  -> ClarificationResponse / RejectedInput / Reflection LLM
+  -> ValidateReflection
+  -> RepairReflection (最多一次) / FallbackReflection
+  -> ProofBuilder（仅 accept 路径）
+  -> ProgressUpdate / SQLite 单事务提交
   -> BadgeCheck
   -> CheckinResponse
 ```
 
-同一地址、挑战和日期由数据库唯一约束保持幂等。非 Demo 模式下，`dateKey` 使用当前日期；Demo 模式根据 `dayIndex` 推导日期。
+同一地址、挑战和日期由数据库唯一约束保持幂等。风险、澄清和拒绝路径在 Proof 与持久化之前结束。非 Demo 模式下，`dateKey` 使用当前日期；Demo 模式根据 `dayIndex` 推导日期。
 
 ### 报告
 
@@ -123,21 +128,21 @@ Browser sends transaction
 
 ## LLM 输出约束现状
 
-现有实现包含 Prompt 约束、JSON 提取、字段存在检查、最大长度截断和 fallback。
-它尚未包含：
+当前 Reflection Safety Seam 包含：
 
-- 输入风险分类。
-- 严格的字段类型、最小长度和禁止额外字段验证。
-- 自伤、他伤或医疗场景的专用路由。
-- Prompt 注入与语义安全校验。
-- 模型、Prompt 版本和 fallback 指标。
-- 面向边界输入的回归评测集。
+- 明确危机规则优先、模糊风险由 SpoonOS `ChatBot` 结构化分类补充。
+- Prompt 注入、重复字符、纯链接和过薄输入判断。
+- `note` 与 `next` 的严格类型、长度和禁止额外字段校验。
+- 诊断、用药和保证性承诺等语义禁区。
+- 临时模型故障受限重试，非法内容最多修复一次，再进入审核过的确定性 fallback。
+- 危机、澄清和拒绝路径不生成 Proof、不写日志、不更新 streak。
+- 覆盖否定风险表达、短有效输入、修复、fallback 和事务回滚的集成测试。
 
-因此，Pydantic 响应模型不能被视为完整的 LLM 安全 Seam。
+仍未完成：模型与 Prompt 版本持久化、指标与追踪、专业审核的危机资源、持久化 Checkpoint 和更完整的离线评测集。
 
-## 目标打卡工作流
+## 当前打卡工作流
 
-后续目标 Graph：
+当前 SpoonOS Graph：
 
 ```text
 DailyPrompt

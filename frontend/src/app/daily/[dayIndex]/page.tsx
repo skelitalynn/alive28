@@ -6,6 +6,7 @@ import NeedAddress from "../../../components/NeedAddress";
 import { api } from "../../../lib/api";
 import { useAddress } from "../../../components/addressContext";
 import type { DailyLog, DailyTask } from "../../../lib/store/schema";
+import type { CheckinOutcome } from "../../../lib/api/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
 
@@ -25,6 +26,11 @@ export default function DailyPage() {
   const [already, setAlready] = useState(false);
   const [text, setText] = useState("");
   const [output, setOutput] = useState<{ log: DailyLog; alreadyCheckedIn: boolean } | null>(null);
+  const [guidance, setGuidance] = useState<{
+    outcome: CheckinOutcome;
+    message?: string | null;
+    reflection?: DailyLog["reflection"] | null;
+  } | null>(null);
 
   // NFT 生成相关状态
   const [nftImage, setNftImage] = useState<string | null>(null);
@@ -80,6 +86,18 @@ export default function DailyPage() {
   const handleCheckin = async () => {
     try {
       const res = await api.checkin({ address, dayIndex, text });
+      if (!res.log) {
+        setGuidance({
+          outcome: res.outcome,
+          message: res.message,
+          reflection: res.reflection
+        });
+        setLog(null);
+        setAlready(false);
+        setOutput(null);
+        return;
+      }
+      setGuidance(null);
       setLog(res.log);
       setAlready(true);
       setOutput({ log: res.log, alreadyCheckedIn: res.alreadyCheckedIn });
@@ -239,6 +257,26 @@ export default function DailyPage() {
             )}
           </div>
         </div>
+
+        {guidance && (
+          <div
+            className={`mt-6 rounded-2xl p-6 border shadow-sm animate-fade-in ${
+              guidance.outcome === "crisis_redirected"
+                ? "bg-amber-50 border-amber-200"
+                : "bg-pink-50/50 border-pink-100"
+            }`}
+          >
+            <div className="text-sm font-medium text-pink-800">
+              {guidance.message || "这次输入尚未生成打卡记录，请补充后重试。"}
+            </div>
+            {guidance.reflection && (
+              <div className="mt-4 space-y-3">
+                <div className="text-sm text-pink-800 leading-relaxed">{guidance.reflection.note}</div>
+                <div className="text-sm text-pink-700 leading-relaxed">{guidance.reflection.next}</div>
+              </div>
+            )}
+          </div>
+        )}
 
         {output && (
           <div className="mt-6 rounded-2xl bg-gradient-to-br from-pink-50/50 to-rose-50/50 p-6 border border-pink-100 shadow-sm animate-fade-in">
