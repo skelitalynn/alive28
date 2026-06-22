@@ -4,7 +4,7 @@
 
 ## 当前目标
 
-`F-002 Reflection Safety Graph` 已完成实现与本地验证。下一阶段进入 Checkpoint、恢复、可观测性和幂等故障注入。
+`F-003 Recoverable Checkin Execution` 已完成实现与本地验证。下一阶段进入钱包身份认证和链上 receipt/event 验证。
 
 ## 最近完成
 
@@ -19,6 +19,11 @@
 - LLM 临时网络故障最多重试两次；内容不合格进入独立 Repair 节点，最多修复一次。
 - 打卡日志与进度改为单事务提交，持久化失败时不留下孤立进度。
 - 前端已处理安全分流响应，不再把无日志结果误判为成功打卡。
+- 使用稳定 `checkinId` 作为 SpoonOS `thread_id`，并通过 SQLite 持久化节点前快照。
+- 数据库节点失败后，相同请求可从失败节点恢复，不会重新生成 Reflection 或重复增加 streak。
+- 同一未完成 `checkinId` 被不同输入复用时返回 `409 CHECKIN_ID_CONFLICT`。
+- Checkin 响应包含 Prompt/模型版本、模型调用次数、节点耗时、节点尝试次数、修复和 fallback 信息。
+- 完成后仅保留紧凑 Checkpoint，不保存日记原文、salt、输入哈希或 Proof。
 
 ## 当前实现状态
 
@@ -57,18 +62,18 @@
 2026-06-22：
 
 - SpoonOS SDK 锁定为 `spoon-ai-sdk==0.4.10`。
-- 后端测试：16 passed。
+- 后端测试：19 passed。
 - 合约测试：5 passed。
 - Next.js 生产构建通过。
 - Harness 文档路由检查通过。
-- `F-002` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
+- `F-002` 与 `F-003` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
 
 ## 下一步建议
 
-1. 为每次打卡增加稳定 `checkin_id` / `thread_id` 和持久化 Checkpointer。
-2. 增加节点耗时、模型版本、Prompt 版本、重试次数和 fallback 原因记录。
-3. 通过故障注入验证恢复后不会重复生成 Proof、日志或进度。
-4. 实现钱包签名认证和链上 receipt/event 验证。
+1. 实现钱包 nonce 签名认证，禁止仅凭地址访问或修改状态。
+2. 后端验证 receipt、sender、contract 和 event 后再确认交易。
+3. 定义 Proof 的批准、撤销和替代语义。
+4. 为 Checkpoint 增加过期、用户删除和数据迁移策略。
 5. 后续按 Phase 4–5 处理隐私、长期记忆、历史前端 Agent 清理、迁移和 CI。
 
 实际执行顺序由 `docs/FEATURES.json` 中唯一的 `active` 功能项决定。

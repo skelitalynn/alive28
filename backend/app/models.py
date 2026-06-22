@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from sqlmodel import SQLModel, Field, Column, JSON
 from sqlalchemy import UniqueConstraint
 from datetime import datetime
@@ -46,3 +46,14 @@ class DailyLog(SQLModel, table=True):
     day_nft_tx_hash: Optional[str] = Field(default=None, max_length=66)
     block_number: Optional[int] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GraphCheckpoint(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    thread_id: str = Field(index=True, max_length=128)
+    checkpoint_id: str = Field(index=True, unique=True, max_length=36)
+    state_values: Dict[str, Any] = Field(sa_column=Column(JSON))
+    next_nodes: list[str] = Field(sa_column=Column(JSON))
+    config_data: Dict[str, Any] = Field(sa_column=Column(JSON))
+    checkpoint_metadata: Dict[str, Any] = Field(sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)

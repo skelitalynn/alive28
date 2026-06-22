@@ -20,6 +20,16 @@
       ],
       "evidence": ".harness\\evidence\\F-002\\20260622T044635Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-003",
+      "behavior": "POST /checkin uses a stable checkinId and persistent SpoonOS checkpoints: after a recoverable node failure, retrying the same request resumes from the last durable node without regenerating completed reflection work or duplicating DailyLog/progress; the response exposes recovery and execution metadata.",
+      "state": "passing",
+      "verification": [
+        ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_checkpoint_recovery.py backend\\app\\tests\\test_reflection_safety.py backend\\app\\tests\\test_core.py -q"
+      ],
+      "evidence": ".harness\\evidence\\F-003\\20260622T074931Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }

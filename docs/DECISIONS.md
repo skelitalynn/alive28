@@ -17,6 +17,8 @@
 | 2026-06-22 | 链上确认后使用撤销或替代语义，不称为回滚 | 区块链历史不可删除，只能追加补偿状态 | Accepted |
 | 2026-06-22 | 危机路径不更新 streak、不生成 Proof 或 NFT | 危机表达不是常规成长任务，不应被游戏化或铸造成奖励 | Accepted |
 | 2026-06-22 | 长期记忆默认不保存日记原文 | 日记高度敏感；仅在明确授权后保存可查看、可删除的结构化偏好 | Accepted |
+| 2026-06-22 | SpoonOS Graph Checkpoint 使用项目 SQLite adapter | SpoonOS 0.4.10 Graph 默认 Checkpointer 仅内存保存；项目已有 SQLite，使用同一数据库可在进程重启后恢复且无需新增基础设施 | Accepted |
+| 2026-06-22 | 数据库副作用失败后由相同 `checkinId` 显式恢复 | 数据库写入不能后台盲目重试；稳定幂等键让调用方可安全重放，并能检测同 ID 不同请求的冲突 | Accepted |
 
 ## 待决定
 
@@ -24,7 +26,6 @@
 - 日记是否服务端加密，以及密钥和删除权由谁控制。
 - 危机输入是仅显示地区化资源，还是需要人工升级能力。
 - 是否保留可转让 Day NFT；原始产品叙事曾使用 SBT，但当前合约允许转让。
-- SpoonOS Checkpointer 采用 SQLite、Postgres 还是 Redis adapter。
 - 链上批准采用后端 EIP-712 validator、预言机还是仅保留 permissionless Proof。
 - Proof 撤销由谁发起、是否允许用户申诉，以及里程碑如何重新计算。
 

@@ -1,6 +1,6 @@
 # 后续实施计划
 
-状态：Phase 1 已于 2026-06-22 完成；Phase 2 待开始。
+状态：Phase 1、Phase 2 已于 2026-06-22 完成；Phase 3 待开始。
 硬约束：正式 Agent 流程必须使用 SpoonOS。
 
 ## 目标
@@ -502,6 +502,8 @@ validatorVersion
 
 完成条件：故障注入测试证明流程可恢复且副作用幂等。
 
+状态：已完成。使用 SQLite 持久化 SpoonOS Checkpoint；相同 `checkinId` 可从失败节点恢复，冲突请求返回 409，响应暴露版本、耗时、尝试次数和 fallback 信息。数据库副作用采用显式重放，不做后台盲目自动重试。
+
 ### Phase 3：身份和链上可信性
 
 - 钱包 nonce 签名认证。
@@ -534,15 +536,15 @@ validatorVersion
 下一次代码修改只创建并激活一个功能项：
 
 ```text
-F-003 Recoverable Checkin Execution
+F-004 Wallet Authentication and Trusted Receipt
 ```
 
 建议行为验收：
 
 ```text
-相同 checkin_id 从任意可恢复节点重放时，
-不会重复调用已完成副作用，不会重复创建 DailyLog、Proof 或更新 streak；
-节点耗时、重试次数、模型与 Prompt 版本、fallback 原因可追踪。
+用户先通过钱包签名 nonce 建立会话；
+后端只允许已认证地址读写自己的状态；
+txHash 只有在 receipt、sender、contract 和 event 全部匹配时才确认。
 ```
 
 实际测试文件和验证命令在开始实现、确定测试路径后通过

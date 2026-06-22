@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict, Any, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ErrorResponse(BaseModel):
@@ -38,6 +38,12 @@ class UserUpdateRequest(BaseModel):
 
 
 class CheckinRequest(BaseModel):
+    checkinId: Optional[str] = Field(
+        default=None,
+        min_length=8,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._:-]+$",
+    )
     address: str
     dayIndex: int
     text: Optional[str] = None
@@ -73,6 +79,24 @@ class DailyLogResponse(BaseModel):
     createdAt: str
 
 
+class CheckinExecutionError(BaseModel):
+    node: str
+    type: str
+    message: str
+
+
+class CheckinExecution(BaseModel):
+    promptVersion: str
+    modelProvider: str
+    modelName: str
+    modelAttempts: int
+    repairAttempts: int
+    fallbackReason: Optional[str] = None
+    nodeDurationsMs: Dict[str, float]
+    nodeAttempts: Dict[str, int]
+    lastError: Optional[CheckinExecutionError] = None
+
+
 class CheckinResponse(BaseModel):
     outcome: Literal[
         "accepted",
@@ -85,6 +109,9 @@ class CheckinResponse(BaseModel):
     alreadyCheckedIn: bool
     message: Optional[str] = None
     reflection: Optional[Reflection] = None
+    checkinId: str
+    recovered: bool = False
+    execution: CheckinExecution
 
 
 class DailySnapshotResponse(BaseModel):

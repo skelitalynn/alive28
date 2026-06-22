@@ -3,6 +3,8 @@ from sqlmodel import Session, select
 from datetime import datetime
 import os
 import json
+import hashlib
+import uuid
 from typing import Dict, Any, Optional
 
 from eth_utils import keccak
@@ -36,8 +38,10 @@ from .models import UserProgress, DailyLog
 from .services.tasks import get_task_by_day_index
 from .services.time import date_key_for_timezone, diff_days, date_key_for_day_index
 from .graph.agent import create_agent
-from .services.reflection import generate_reflection
+from .services.reflection import PROMPT_VERSION, generate_reflection
+from .services.checkpoint import SQLiteGraphCheckpointer
 from .services.nft_image import generate_nft_image
+from spoon_ai.graph.types import Command, StateSnapshot
 
 router = APIRouter()
 
@@ -121,9 +125,145 @@ def _parse_token_id(token_id: str) -> int:
     return int(token_id)
 
 
-async def _invoke_graph(state: Dict[str, Any]):
-    agent = create_agent()
-    return await agent.graph.invoke(state)
+def _default_checkin_id(
+    address: str,
+    challenge_id: int,
+    date_key: str,
+    day_index: int,
+    request_fingerprint: str,
+) -> str:
+    identity = (
+        f"alive28:{challenge_id}:{address}:{date_key}:{day_index}:"
+        f"{request_fingerprint}"
+    )
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, identity))
+
+
+def _request_fingerprint(
+    address: str,
+    challenge_id: int,
+    date_key: str,
+    day_index: int,
+    text: str | None,
+    image_url: str | None,
+) -> str:
+    payload = json.dumps(
+        {
+            "address": address,
+            "challengeId": challenge_id,
+            "dateKey": date_key,
+            "dayIndex": day_index,
+            "text": text,
+            "imageUrl": image_url,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _checkin_execution(result: Dict[str, Any]) -> Dict[str, Any]:
+    last_error = result.get("lastError")
+    public_error = None
+    if isinstance(last_error, dict):
+        public_error = {
+            "node": last_error.get("node", "unknown"),
+            "type": last_error.get("type", "ExecutionError"),
+            "message": "node execution failed",
+        }
+    return {
+        "promptVersion": result.get("promptVersion", PROMPT_VERSION),
+        "modelProvider": result.get("modelProvider", settings.llm_provider),
+        "modelName": result.get("modelName", settings.llm_model),
+        "modelAttempts": int(result.get("modelAttempts") or 0),
+        "repairAttempts": int(result.get("repairAttempts") or 0),
+        "fallbackReason": result.get("fallbackReason"),
+        "nodeDurationsMs": result.get("nodeDurationsMs") or {},
+        "nodeAttempts": result.get("nodeAttempts") or {},
+        "lastError": public_error,
+    }
+
+
+def _compact_completed_state(result: Dict[str, Any]) -> Dict[str, Any]:
+    compact = dict(result)
+    for sensitive_or_transient in (
+        "db",
+        "text",
+        "normalizedText",
+        "imageUrl",
+        "imageDesc",
+        "rawReflection",
+        "saltHex",
+        "inputHash",
+        "proofHash",
+        "task",
+    ):
+        compact.pop(sensitive_or_transient, None)
+    return compact
+
+
+async def _invoke_graph(
+    state: Dict[str, Any],
+    *,
+    checkpointer: SQLiteGraphCheckpointer | None = None,
+    thread_id: str | None = None,
+    resume: bool = False,
+):
+    agent = create_agent(checkpointer=checkpointer)
+    config = {"configurable": {"thread_id": thread_id}} if thread_id else {}
+    initial_state: Dict[str, Any] | Command = state
+    if resume:
+        initial_state = Command(resume={"db": state["db"], "recovered": True})
+    try:
+        result = await agent.graph.invoke(initial_state, config=config)
+    except Exception as exc:
+        if checkpointer and thread_id:
+            latest = checkpointer.get_checkpoint(thread_id)
+            if latest:
+                failed_node = getattr(exc, "node", None)
+                if not failed_node and latest.next:
+                    failed_node = latest.next[0]
+                values = dict(latest.values)
+                attempts = dict(values.get("nodeAttempts") or {})
+                if failed_node:
+                    attempts[failed_node] = int(attempts.get(failed_node, 0)) + 1
+                root_error = exc
+                while root_error.__cause__ is not None:
+                    root_error = root_error.__cause__
+                values["nodeAttempts"] = attempts
+                values["lastError"] = {
+                    "node": failed_node or "unknown",
+                    "type": type(root_error).__name__,
+                    "message": str(root_error)[:300],
+                }
+                checkpointer.save_checkpoint(
+                    thread_id,
+                    StateSnapshot(
+                        values=values,
+                        next=(failed_node,) if failed_node else latest.next,
+                        config=config,
+                        metadata={
+                            "status": "failed",
+                            "node": failed_node,
+                        },
+                        created_at=datetime.utcnow(),
+                    ),
+                )
+        raise
+    if checkpointer and thread_id:
+        checkpointer.clear_thread(thread_id)
+        checkpointer.save_checkpoint(
+            thread_id,
+            StateSnapshot(
+                values=_compact_completed_state(result),
+                next=(),
+                config=config,
+                metadata={"status": "completed", "node": None},
+                created_at=datetime.utcnow(),
+            ),
+        )
+    return result
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -263,9 +403,59 @@ async def checkin(payload: CheckinRequest, session: Session = Depends(get_sessio
     else:
         date_key = date_key_for_timezone(timezone)
 
+    request_fingerprint = _request_fingerprint(
+        address,
+        settings.challenge_id,
+        date_key,
+        payload.dayIndex,
+        payload.text,
+        payload.imageUrl,
+    )
+    checkin_id = payload.checkinId or _default_checkin_id(
+        address,
+        settings.challenge_id,
+        date_key,
+        payload.dayIndex,
+        request_fingerprint,
+    )
+    checkpointer = SQLiteGraphCheckpointer(session.get_bind())
+    latest_checkpoint = checkpointer.get_checkpoint(checkin_id)
+    completed_replay = bool(
+        latest_checkpoint
+        and latest_checkpoint.metadata.get("status") == "completed"
+    )
+    resume = bool(latest_checkpoint and not completed_replay)
+
+    if latest_checkpoint:
+        previous = latest_checkpoint.values
+        same_identity = (
+            previous.get("address") == address
+            and previous.get("challengeId") == settings.challenge_id
+            and previous.get("dateKey") == date_key
+            and previous.get("dayIndex") == payload.dayIndex
+        )
+        if (
+            not same_identity
+            or previous.get("requestFingerprint") != request_fingerprint
+        ):
+            _http_error(
+                409,
+                "CHECKIN_ID_CONFLICT",
+                "checkinId is already bound to a different request",
+            )
+
     state = {
         "db": session,
         "flow": "checkin",
+        "checkinId": checkin_id,
+        "requestFingerprint": request_fingerprint,
+        "recovered": False,
+        "nodeDurationsMs": {},
+        "nodeAttempts": {},
+        "lastError": None,
+        "promptVersion": PROMPT_VERSION,
+        "modelProvider": settings.llm_provider,
+        "modelName": settings.llm_model,
         "address": address,
         "timezone": timezone,
         "challengeId": settings.challenge_id,
@@ -276,7 +466,15 @@ async def checkin(payload: CheckinRequest, session: Session = Depends(get_sessio
     }
     if start_date_key:
         state["startDateKey"] = start_date_key
-    result = await _invoke_graph(state)
+    if completed_replay:
+        result = latest_checkpoint.values
+    else:
+        result = await _invoke_graph(
+            state,
+            checkpointer=checkpointer,
+            thread_id=checkin_id,
+            resume=resume,
+        )
     outcome = result.get("outcome")
     if outcome in ("clarify", "rejected", "crisis_redirected"):
         return {
@@ -285,6 +483,9 @@ async def checkin(payload: CheckinRequest, session: Session = Depends(get_sessio
             "alreadyCheckedIn": False,
             "message": result.get("responseMessage"),
             "reflection": result.get("reflection"),
+            "checkinId": checkin_id,
+            "recovered": bool(result.get("recovered")),
+            "execution": _checkin_execution(result),
         }
     log_id = result.get("logId")
     if not log_id:
@@ -300,11 +501,18 @@ async def checkin(payload: CheckinRequest, session: Session = Depends(get_sessio
     if not log:
         _http_error(500, "INTERNAL", "failed to create log")
     return {
-        "outcome": "already_checked_in" if result.get("alreadyCheckedIn") else "accepted",
+        "outcome": "already_checked_in"
+        if completed_replay or result.get("alreadyCheckedIn")
+        else "accepted",
         "log": _log_to_response(log),
-        "alreadyCheckedIn": bool(result.get("alreadyCheckedIn")),
+        "alreadyCheckedIn": bool(
+            completed_replay or result.get("alreadyCheckedIn")
+        ),
         "message": None,
         "reflection": None,
+        "checkinId": checkin_id,
+        "recovered": bool(result.get("recovered")),
+        "execution": _checkin_execution(result),
     }
 
 

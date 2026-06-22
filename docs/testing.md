@@ -5,7 +5,7 @@
 | 范围 | 命令 | 当前覆盖 |
 |---|---|---|
 | Harness 和文档 | `python scripts/harness/check_docs.py` | 文档路由、配置和本地链接 |
-| 后端 | `python -m pytest backend/app/tests -q` | Proof 哈希、日期计算、日志唯一约束 |
+| 后端 | `python -m pytest backend/app/tests -q` | Proof、Reflection Safety、Checkpoint 恢复、事务回滚与日志幂等 |
 | 前端 | `npm --prefix frontend run build` | Next.js 构建和 TypeScript 检查 |
 | 合约 | `forge test --root contracts` | ProofRegistry 与 RestartBadgeNFT |
 
@@ -67,19 +67,20 @@ Invoke-RestMethod "http://127.0.0.1:8000/progress?address=0x11111111111111111111
 Invoke-RestMethod "http://127.0.0.1:8000/report?address=0x1111111111111111111111111111111111111111&range=week"
 ```
 
-## LLM 验证缺口
+## 当前 LLM 与恢复覆盖
 
-当前自动化没有覆盖：
+当前自动化已覆盖：
 
-- 输出仅包含 `note` 和 `next`。
-- 长度下限、动作数量和任务相关性。
-- 诊断、用药、绝对化承诺等禁止内容。
-- Prompt 注入。
-- 自伤或他伤输入的风险路由。
-- LLM 超时、错误 JSON 和 fallback 指标。
-- 模型或 Prompt 变更后的回归评测。
+- 严格 Reflection Schema 与语义禁区。
+- Prompt 注入、短有效输入和危机分流。
+- 临时超时重试、错误输出修复与安全 fallback。
+- 数据库事务失败不留下孤立进度。
+- 相同 `checkinId` 从持久化 SpoonOS 快照恢复。
+- 恢复不重复调用 Reflection、不重复日志和 streak。
+- 同 ID 不同输入返回冲突。
+- 模型次数、节点耗时、节点尝试次数和错误摘要。
 
-在补齐这些测试前，不能把“返回了合法 JSON”等同于“反馈安全有效”。
+仍缺少大规模离线安全评测、真实供应商故障测试、并发恢复竞争和 Checkpoint 生命周期测试。
 
 ## Reflection Safety 计划验收
 

@@ -3,6 +3,16 @@
 
 class GraphState(TypedDict, total=False):
     flow: str
+    checkinId: str
+    requestFingerprint: str
+    recovered: bool
+    nodeDurationsMs: Dict[str, float]
+    nodeAttempts: Dict[str, int]
+    lastError: Optional[Dict[str, str]]
+    promptVersion: str
+    modelProvider: str
+    modelName: str
+    modelAttempts: int
     address: str
     timezone: str
     challengeId: int

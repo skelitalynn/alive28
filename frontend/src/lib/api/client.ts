@@ -19,12 +19,31 @@ export type CheckinOutcome =
   | "rejected"
   | "crisis_redirected";
 
+export type CheckinExecution = {
+  promptVersion: string;
+  modelProvider: string;
+  modelName: string;
+  modelAttempts: number;
+  repairAttempts: number;
+  fallbackReason?: string | null;
+  nodeDurationsMs: Record<string, number>;
+  nodeAttempts: Record<string, number>;
+  lastError?: {
+    node: string;
+    type: string;
+    message: string;
+  } | null;
+};
+
 export type CheckinResult = {
   outcome: CheckinOutcome;
   log: DailyLog | null;
   alreadyCheckedIn: boolean;
   message?: string | null;
   reflection?: DailyLog["reflection"] | null;
+  checkinId: string;
+  recovered: boolean;
+  execution: CheckinExecution;
 };
 
 export type ProgressData = {
@@ -53,7 +72,7 @@ export interface ApiClient {
   getConfig: () => Promise<ConfigData>;
   getHomeSnapshot: (address?: string | null) => Promise<HomeSnapshot>;
   getDailySnapshot: (address: string, dayIndex: number) => Promise<DailySnapshot>;
-  checkin: (params: { address: string; dayIndex: number; text: string }) => Promise<CheckinResult>;
+  checkin: (params: { address: string; dayIndex: number; text: string; checkinId?: string }) => Promise<CheckinResult>;
   submitProof: (params: { address: string }) => Promise<DailyLog>;
   mintDay: (params: { address: string }) => Promise<DailyLog>;
   getProgress: (params: { address: string }) => Promise<ProgressData>;

@@ -10,7 +10,7 @@ from ..services.tasks import get_task_by_day_index
 from ..services.crypto import normalize_text, sha256_hex, generate_salt_hex, compute_proof_hash
 from ..services.reflection import (
     fallback_reflection,
-    request_reflection_candidate,
+    request_reflection_candidate_with_metadata,
     validate_reflection,
 )
 from ..services.reflection_safety import (
@@ -126,11 +126,19 @@ async def reflection_node(state: Dict[str, Any]) -> Dict[str, Any]:
     task = state.get("task", {})
     normalized = state.get("normalizedText", "")
     try:
-        raw = await request_reflection_candidate(task, normalized)
-        return {"rawReflection": raw, "generationError": None}
+        candidate = await request_reflection_candidate_with_metadata(
+            task,
+            normalized,
+        )
+        return {
+            "rawReflection": candidate.raw,
+            "modelAttempts": candidate.attempts,
+            "generationError": None,
+        }
     except Exception as exc:
         return {
             "rawReflection": "",
+            "modelAttempts": getattr(exc, "attempts", 1),
             "generationError": type(exc).__name__,
             "fallbackReason": "model_unavailable",
         }
@@ -159,20 +167,24 @@ async def validate_reflection_node(state: Dict[str, Any]) -> Dict[str, Any]:
 async def repair_reflection_node(state: Dict[str, Any]) -> Dict[str, Any]:
     repair_attempts = int(state.get("repairAttempts") or 0) + 1
     try:
-        raw = await request_reflection_candidate(
+        candidate = await request_reflection_candidate_with_metadata(
             state.get("task", {}),
             state.get("normalizedText", ""),
             invalid_output=state.get("rawReflection", ""),
             validation_errors=state.get("validationErrors", []),
         )
         return {
-            "rawReflection": raw,
+            "rawReflection": candidate.raw,
+            "modelAttempts": int(state.get("modelAttempts") or 0)
+            + candidate.attempts,
             "repairAttempts": repair_attempts,
             "generationError": None,
         }
     except Exception as exc:
         return {
             "rawReflection": "",
+            "modelAttempts": int(state.get("modelAttempts") or 0)
+            + getattr(exc, "attempts", 1),
             "repairAttempts": repair_attempts,
             "generationError": type(exc).__name__,
             "fallbackReason": "invalid_output",

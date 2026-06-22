@@ -142,10 +142,11 @@ async function getDailySnapshot(address: string, dayIndex: number): Promise<Dail
   };
 }
 
-async function checkin(params: { address: string; dayIndex: number; text: string }): Promise<CheckinResult> {
+async function checkin(params: { address: string; dayIndex: number; text: string; checkinId?: string }): Promise<CheckinResult> {
   const res = await fetchJson<any>("/checkin", {
     method: "POST",
     body: JSON.stringify({
+      checkinId: params.checkinId,
       address: params.address,
       dayIndex: params.dayIndex,
       text: params.text
@@ -156,7 +157,10 @@ async function checkin(params: { address: string; dayIndex: number; text: string
     log: res.log ? mapLog(res.log) : null,
     alreadyCheckedIn: res.alreadyCheckedIn ?? res.already_checked_in ?? false,
     message: res.message ?? null,
-    reflection: res.reflection ?? null
+    reflection: res.reflection ?? null,
+    checkinId: res.checkinId,
+    recovered: res.recovered ?? false,
+    execution: res.execution
   };
 }
 

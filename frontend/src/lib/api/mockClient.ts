@@ -62,7 +62,19 @@ async function getDailySnapshot(address: string, dayIndex: number): Promise<Dail
   return { dateKey, task, log: alreadyCheckedIn ? log : null, alreadyCheckedIn };
 }
 
-async function checkin(params: { address: string; dayIndex: number; text: string }): Promise<CheckinResult> {
+const mockExecution = {
+  promptVersion: "mock-v1",
+  modelProvider: "mock",
+  modelName: "mock",
+  modelAttempts: 1,
+  repairAttempts: 0,
+  fallbackReason: null,
+  nodeDurationsMs: {},
+  nodeAttempts: {},
+  lastError: null
+};
+
+async function checkin(params: { address: string; dayIndex: number; text: string; checkinId?: string }): Promise<CheckinResult> {
   const { address, dayIndex, text } = params;
   const store = loadStore();
   const user = getUser(store, address);
@@ -88,7 +100,14 @@ async function checkin(params: { address: string; dayIndex: number; text: string
   // 检查该日期和 dayIndex 是否已经有日志
   const exist = findLog(store, address, dateKey);
   if (exist && exist.dayIndex === dayIndex) {
-    return { outcome: "already_checked_in", log: exist, alreadyCheckedIn: true };
+    return {
+      outcome: "already_checked_in",
+      log: exist,
+      alreadyCheckedIn: true,
+      checkinId: params.checkinId || exist.id,
+      recovered: false,
+      execution: mockExecution
+    };
   }
 
   const di = dayIndex;
@@ -135,7 +154,14 @@ async function checkin(params: { address: string; dayIndex: number; text: string
   store.users[address.toLowerCase()] = user;
   saveStore(store);
 
-  return { outcome: "accepted", log: logObj, alreadyCheckedIn: false };
+  return {
+    outcome: "accepted",
+    log: logObj,
+    alreadyCheckedIn: false,
+    checkinId: params.checkinId || logObj.id,
+    recovered: false,
+    execution: mockExecution
+  };
 }
 
 async function submitProof(params: { address: string }): Promise<DailyLog> {

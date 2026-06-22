@@ -1,3 +1,6 @@
+from time import perf_counter
+from typing import Any, Callable
+
 from spoon_ai.graph import StateGraph, END
 from spoon_ai.graph.agent import GraphAgent as GraphRunner
 from .state import GraphState
@@ -23,28 +26,43 @@ from .nodes import (
 )
 
 
-def build_graph() -> StateGraph:
-    graph = StateGraph(GraphState)
+def _instrument(node_name: str, node: Callable) -> Callable:
+    async def wrapped(state: dict[str, Any]) -> dict[str, Any]:
+        started = perf_counter()
+        result = await node(state)
+        duration_ms = round((perf_counter() - started) * 1000, 3)
+        attempts = int((state.get("nodeAttempts") or {}).get(node_name, 0)) + 1
+        return {
+            **(result or {}),
+            "nodeDurationsMs": {node_name: duration_ms},
+            "nodeAttempts": {node_name: attempts},
+        }
 
-    graph.add_node("DailyPrompt", daily_prompt_node)
-    graph.add_node("UserInput", user_input_node)
-    graph.add_node("RiskClassify", risk_classify_node)
-    graph.add_node("CrisisResponse", crisis_response_node)
-    graph.add_node("InputQuality", input_quality_node)
-    graph.add_node("ClarificationResponse", clarification_response_node)
-    graph.add_node("RejectedInput", rejected_input_node)
-    graph.add_node("Reflection", reflection_node)
-    graph.add_node("ValidateReflection", validate_reflection_node)
-    graph.add_node("RepairReflection", repair_reflection_node)
-    graph.add_node("ValidateRepairedReflection", validate_reflection_node)
-    graph.add_node("FallbackReflection", fallback_reflection_node)
-    graph.add_node("ProofBuilder", proof_builder_node)
-    graph.add_node("OnchainSubmit", onchain_submit_node)
-    graph.add_node("TxConfirm", tx_confirm_node)
-    graph.add_node("ProgressUpdate", progress_update_node)
-    graph.add_node("BadgeCheck", badge_check_node)
-    graph.add_node("WeeklyReport", weekly_report_node)
-    graph.add_node("FinalReport", final_report_node)
+    return wrapped
+
+
+def build_graph(checkpointer: Any = None) -> StateGraph:
+    graph = StateGraph(GraphState, checkpointer=checkpointer)
+
+    graph.add_node("DailyPrompt", _instrument("DailyPrompt", daily_prompt_node))
+    graph.add_node("UserInput", _instrument("UserInput", user_input_node))
+    graph.add_node("RiskClassify", _instrument("RiskClassify", risk_classify_node))
+    graph.add_node("CrisisResponse", _instrument("CrisisResponse", crisis_response_node))
+    graph.add_node("InputQuality", _instrument("InputQuality", input_quality_node))
+    graph.add_node("ClarificationResponse", _instrument("ClarificationResponse", clarification_response_node))
+    graph.add_node("RejectedInput", _instrument("RejectedInput", rejected_input_node))
+    graph.add_node("Reflection", _instrument("Reflection", reflection_node))
+    graph.add_node("ValidateReflection", _instrument("ValidateReflection", validate_reflection_node))
+    graph.add_node("RepairReflection", _instrument("RepairReflection", repair_reflection_node))
+    graph.add_node("ValidateRepairedReflection", _instrument("ValidateRepairedReflection", validate_reflection_node))
+    graph.add_node("FallbackReflection", _instrument("FallbackReflection", fallback_reflection_node))
+    graph.add_node("ProofBuilder", _instrument("ProofBuilder", proof_builder_node))
+    graph.add_node("OnchainSubmit", _instrument("OnchainSubmit", onchain_submit_node))
+    graph.add_node("TxConfirm", _instrument("TxConfirm", tx_confirm_node))
+    graph.add_node("ProgressUpdate", _instrument("ProgressUpdate", progress_update_node))
+    graph.add_node("BadgeCheck", _instrument("BadgeCheck", badge_check_node))
+    graph.add_node("WeeklyReport", _instrument("WeeklyReport", weekly_report_node))
+    graph.add_node("FinalReport", _instrument("FinalReport", final_report_node))
 
     graph.set_entry_point("DailyPrompt")
 
@@ -146,6 +164,6 @@ def build_graph() -> StateGraph:
     return graph
 
 
-def create_agent() -> GraphRunner:
-    graph = build_graph()
+def create_agent(checkpointer: Any = None) -> GraphRunner:
+    graph = build_graph(checkpointer=checkpointer)
     return GraphRunner(name="alive_graph_agent", graph=graph)

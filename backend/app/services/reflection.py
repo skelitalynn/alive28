@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -91,6 +92,19 @@ class ReflectionValidation(BaseModel):
         return self.reflection is not None and not self.errors
 
 
+@dataclass(frozen=True)
+class ReflectionCandidate:
+    raw: str
+    attempts: int
+
+
+class ModelRequestFailure(Exception):
+    def __init__(self, original: Exception, attempts: int):
+        super().__init__(str(original))
+        self.original = original
+        self.attempts = attempts
+
+
 def validate_reflection(raw: str) -> ReflectionValidation:
     try:
         payload = json.loads(raw)
@@ -122,7 +136,7 @@ def fallback_reflection(reason: str) -> dict[str, str]:
 async def _ask_with_transient_retry(
     messages: list[dict[str, str]],
     system_prompt: str,
-) -> str:
+) -> ReflectionCandidate:
     retryable = (
         asyncio.TimeoutError,
         NetworkError,
@@ -134,17 +148,22 @@ async def _ask_with_transient_retry(
     for attempt in range(TRANSIENT_RETRY_ATTEMPTS):
         try:
             bot = ChatBot()
-            return await asyncio.wait_for(
-                bot.ask(messages, system_msg=system_prompt),
-                timeout=MODEL_TIMEOUT_SECONDS,
+            return ReflectionCandidate(
+                raw=await asyncio.wait_for(
+                    bot.ask(messages, system_msg=system_prompt),
+                    timeout=MODEL_TIMEOUT_SECONDS,
+                ),
+                attempts=attempt + 1,
             )
         except retryable as exc:
             last_error = exc
             if attempt + 1 < TRANSIENT_RETRY_ATTEMPTS:
                 await asyncio.sleep(0.25 * (2**attempt))
+        except Exception as exc:
+            raise ModelRequestFailure(exc, attempt + 1) from exc
 
     if last_error:
-        raise last_error
+        raise ModelRequestFailure(last_error, TRANSIENT_RETRY_ATTEMPTS) from last_error
     raise RuntimeError("LLM request failed without an error")
 
 
@@ -155,6 +174,23 @@ async def request_reflection_candidate(
     invalid_output: str | None = None,
     validation_errors: list[str] | None = None,
 ) -> str:
+    return (
+        await request_reflection_candidate_with_metadata(
+            task,
+            normalized_text,
+            invalid_output=invalid_output,
+            validation_errors=validation_errors,
+        )
+    ).raw
+
+
+async def request_reflection_candidate_with_metadata(
+    task: dict[str, Any],
+    normalized_text: str,
+    *,
+    invalid_output: str | None = None,
+    validation_errors: list[str] | None = None,
+) -> ReflectionCandidate:
     if invalid_output is None:
         user_prompt = (
             f"任务标题: {task.get('title', '')}\n"

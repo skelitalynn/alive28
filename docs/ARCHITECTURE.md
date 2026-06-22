@@ -39,9 +39,10 @@ Wallet ---------- Solidity contracts
 - `backend/app/graph/nodes.py`：任务读取、风险与质量分流、Reflection 校验与修复、Proof、进度和报告节点。
 - `backend/app/services/reflection_safety.py`：输入风险规则、SpoonOS 结构化分类、Prompt 注入和输入质量判断。
 - `backend/app/services/reflection.py`：Reflection Prompt、严格 Schema、语义校验、受限重试、修复和 fallback。
+- `backend/app/services/checkpoint.py`：兼容 SpoonOS Graph 接口的 SQLite 持久化 Checkpointer。
 - `backend/app/services/report.py`：周报与结营报告生成。
 - `backend/app/services/nft_image.py`：Pollinations、Gemini 和 SVG fallback。
-- `backend/app/models.py`：`UserProgress` 与 `DailyLog`。
+- `backend/app/models.py`：`UserProgress`、`DailyLog` 与 `GraphCheckpoint`。
 - `backend/app/data/tasks.json`：28 天任务内容。
 
 Graph 是确定性工作流。LLM 只参与 Reflection 和报告文本，不控制数据库查询、Proof 计算或里程碑规则。
@@ -86,6 +87,18 @@ POST /checkin
 ```
 
 同一地址、挑战和日期由数据库唯一约束保持幂等。风险、澄清和拒绝路径在 Proof 与持久化之前结束。非 Demo 模式下，`dateKey` 使用当前日期；Demo 模式根据 `dayIndex` 推导日期。
+
+每次打卡还使用稳定 `checkinId` 作为 SpoonOS `thread_id`：
+
+```text
+POST /checkin(checkinId)
+  -> SQLiteGraphCheckpointer 读取最新快照
+  -> 无快照：从 DailyPrompt 开始
+  -> 未完成快照：Command(resume=...) 从 next node 继续
+  -> 已完成快照：返回幂等结果
+```
+
+快照在节点执行前持久化。节点失败时额外记录失败节点、错误摘要和尝试次数；恢复时注入新的短生命周期数据库 Session，不把 Session 序列化。成功结束后清理中间快照，只保留移除日记原文、salt 和 Proof 的紧凑完成快照。
 
 ### 报告
 
@@ -138,7 +151,9 @@ Browser sends transaction
 - 危机、澄清和拒绝路径不生成 Proof、不写日志、不更新 streak。
 - 覆盖否定风险表达、短有效输入、修复、fallback 和事务回滚的集成测试。
 
-仍未完成：模型与 Prompt 版本持久化、指标与追踪、专业审核的危机资源、持久化 Checkpoint 和更完整的离线评测集。
+当前响应还包含 Prompt/模型版本、模型调用次数、修复次数、fallback 原因、节点耗时、节点尝试次数和最后错误摘要。
+
+仍未完成：集中式指标后端、专业审核的危机资源、Checkpoint 过期/删除策略和更完整的离线评测集。
 
 ## 当前打卡工作流
 
@@ -221,15 +236,16 @@ LLM 可以提出工具调用参数，但 Graph 必须校验参数、调用结果
 
 ### Checkpoint
 
-每次打卡使用稳定的 `thread_id` 或 `checkin_id`。Checkpoint 至少应记录：
+当前每次打卡使用稳定 `checkinId` 作为 SpoonOS `thread_id`。Checkpoint 记录：
 
 - 已完成节点。
 - 风险和质量判断。
 - 生成结果与校验错误。
 - 修复次数。
 - 是否已经持久化。
+- 节点耗时、尝试次数和最后错误。
 
-生产环境需要持久化 Checkpointer；内存实现只适合测试。
+当前持久化后端是项目 SQLite。相同 `checkinId` 只能恢复原请求，不同输入会返回 `409 CHECKIN_ID_CONFLICT`。数据库副作用失败后不自动盲目重试，由调用方用同一请求显式恢复。
 
 ### 重试
 
