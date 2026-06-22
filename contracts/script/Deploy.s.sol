@@ -9,9 +9,10 @@ import "../src/MilestoneNFT.sol";
 contract Deploy is Script {
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
+        address proofValidator = vm.envAddress("PROOF_VALIDATOR");
         string memory baseUri = vm.envOr("NFT_BASE_URI", string("https://api.YOUR_DOMAIN/metadata/"));
         vm.startBroadcast(pk);
-        ProofRegistry registry = new ProofRegistry();
+        ProofRegistry registry = new ProofRegistry(proofValidator);
         RestartBadgeNFT nft = new RestartBadgeNFT(address(registry), baseUri);
         MilestoneNFT milestoneNft = new MilestoneNFT();
         vm.stopBroadcast();

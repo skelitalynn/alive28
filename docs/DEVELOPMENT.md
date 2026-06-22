@@ -56,6 +56,8 @@ GET http://127.0.0.1:8000/health
 | `MILESTONE_NFT_ADDRESS` | Milestone NFT 合约 | 部署地址 |
 | `AUTH_NONCE_TTL_SECONDS` | 签名 challenge 有效期 | `300` |
 | `AUTH_SESSION_TTL_SECONDS` | 钱包 session 有效期 | `86400` |
+| `PROOF_APPROVAL_PRIVATE_KEY` | ProofRegistry validator 私钥，仅后端持有 | 必须配置 |
+| `PROOF_APPROVAL_TTL_SECONDS` | 单次 Proof 批准有效期（秒） | `300` |
 | `DEFAULT_LLM_PROVIDER` | SpoonOS 默认模型供应商 | `deepseek` |
 | `DEFAULT_MODEL` | 默认模型 | `deepseek-chat` |
 | `DEEPSEEK_API_KEY` | DeepSeek 密钥 | 必须替换示例值 |
@@ -112,17 +114,26 @@ forge test
 ```powershell
 $env:RPC_URL = "https://..."
 $env:PRIVATE_KEY = "..."
+$env:PROOF_VALIDATOR = "0x..."
 $env:NFT_BASE_URI = "https://..."
 forge script script/Deploy.s.sol --rpc-url $env:RPC_URL --private-key $env:PRIVATE_KEY --broadcast
 ```
 
-部署后把地址同步到 `frontend/.env.local`。私钥和真实环境文件不得提交。
+`PROOF_VALIDATOR` 必须等于后端 `PROOF_APPROVAL_PRIVATE_KEY` 派生出的地址。部署后把地址同步到后端和 `frontend/.env.local`。私钥和真实环境文件不得提交。
 
 ## 数据库
 
 后端启动时调用 `SQLModel.metadata.create_all()`，不会迁移已有表。
 
 本地无保留价值的数据可以删除 `backend/alive.db` 后重建。需要保留数据时，必须执行明确 SQL 迁移或引入迁移工具；不要依赖 `create_all()` 修改已有表。
+
+F-005 为 `dailylog` 增加 Proof 补偿字段。保留已有 SQLite 数据时，启动新代码前执行一次：
+
+```powershell
+sqlite3 backend\alive.db ".read backend/migrations/20260622_f005_proof_approval.sql"
+```
+
+随后首次启动会通过 `create_all()` 创建 `proofapproval` 与 `proofcompensation` 新表。执行迁移前先备份数据库；全新或可丢弃的本地数据库直接重建即可。
 
 历史字段变更曾要求：
 

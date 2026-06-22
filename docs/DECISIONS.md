@@ -21,13 +21,15 @@
 | 2026-06-22 | 数据库副作用失败后由相同 `checkinId` 显式恢复 | 数据库写入不能后台盲目重试；稳定幂等键让调用方可安全重放，并能检测同 ID 不同请求的冲突 | Accepted |
 | 2026-06-22 | 正式身份采用一次性 nonce + EIP-191 签名 + 服务端 session | 当前需求只需要证明地址控制权；该方案接口较小，nonce 单次消费，session token 只保存哈希，后续可迁移到 SIWE | Accepted |
 | 2026-06-22 | 客户端 txHash 只作为链查询键，不作为成功证据 | 后端必须从配置 RPC 核对 chain、receipt status、sender、contract 和预期 event 后才更新本地状态 | Accepted |
+| 2026-06-22 | Proof 上链采用短期、单次 EIP-191 validator 批准 | 签名绑定合约、链、钱包、日期、Proof、期限和批准 ID；合约与后端都检查单次消费，未通过安全 Graph 的输入不能直接提交 | Accepted |
+| 2026-06-22 | revoke/supersede 是后端追加式补偿记录 | 链上历史不可删除；撤销影响产品读取和资格，替代只用于已上链 Proof，且任意替代哈希不会自动获得新批准 | Accepted |
 
 ## 待决定
 
 - 日记是否服务端加密，以及密钥和删除权由谁控制。
 - 危机输入是仅显示地区化资源，还是需要人工升级能力。
 - 是否保留可转让 Day NFT；原始产品叙事曾使用 SBT，但当前合约允许转让。
-- 链上批准采用后端 EIP-712 validator、预言机还是仅保留 permissionless Proof。
-- Proof 撤销由谁发起、是否允许用户申诉，以及里程碑如何重新计算。
+- 是否把 revoke/supersede 进一步同步为链上补偿事件，使合约读取也能阻止后续 Day/Final NFT。
+- Proof 撤销是否需要管理员复核或用户申诉流程。
 
 待决定项只有在用户或项目负责人明确选择后，才转成 Accepted 决策。

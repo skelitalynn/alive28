@@ -1,6 +1,6 @@
 # 后续实施计划
 
-状态：Phase 1、Phase 2 已于 2026-06-22 完成；Phase 3 待开始。
+状态：Phase 1、Phase 2、Phase 3 已于 2026-06-22 完成。
 硬约束：正式 Agent 流程必须使用 SpoonOS。
 
 ## 目标
@@ -513,7 +513,7 @@ validatorVersion
 
 完成条件：伪造地址或 txHash 不能改变他人状态或获得里程碑。
 
-状态：部分完成。`F-004` 已实现钱包 nonce 签名 session，以及 Proof、Day/Final NFT、Milestone 的 receipt/sender/contract/event 验证。批准签名与 revoke/supersede 补偿语义仍待实现。
+状态：已完成。`F-004` 实现钱包 nonce 签名 session，以及 Proof、Day/Final NFT、Milestone 的 receipt/sender/contract/event 验证；`F-005` 增加短期单次 validator 批准、合约签名校验、批准消费、revoke/supersede 追加审计和资格过滤。当前补偿状态属于后端产品读取模型，不删除链上历史。
 
 ### Phase 4：隐私和长期记忆
 
@@ -535,19 +535,4 @@ validatorVersion
 
 ## 下一任务建议
 
-下一次代码修改只创建并激活一个功能项：
-
-```text
-F-005 Proof Approval and Compensation Semantics
-```
-
-建议行为验收：
-
-```text
-只有经过安全 Graph 和数据库事务的打卡可以获得短期、单次的上链批准；
-撤销或替代 Proof 会追加不可变审计记录；
-被撤销的 Proof 不再参与产品读取和里程碑资格计算。
-```
-
-实际测试文件和验证命令在开始实现、确定测试路径后通过
-`scripts/harness/task.py add` 添加，不提前写入 `FEATURES.json`。
+Phase 4 从隐私最小化开始：NFT 图片生成不发送日记原文，并为长期记忆建立明确授权、查看、删除与撤回路径。下一次代码修改仍只允许激活一个功能项。

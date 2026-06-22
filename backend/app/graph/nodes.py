@@ -20,7 +20,8 @@ from ..services.reflection_safety import (
 )
 from ..services.time import date_key_for_timezone, diff_days
 from ..services.report import generate_report_text
-from ..models import DailyLog, UserProgress
+from ..models import DailyLog, ProofApproval, UserProgress
+from ..services.proof_approval import eligible_streak, is_log_eligible
 
 
 def _ensure_progress(db: Session, address: str, timezone: str, date_key: str, start_date_key_override: str | None = None) -> UserProgress:
@@ -227,6 +228,7 @@ async def tx_confirm_node(state: Dict[str, Any]) -> Dict[str, Any]:
     chain_id = state.get("chainId")
     contract_address = state.get("contractAddress")
     block_number = state.get("blockNumber")
+    approval_id = state.get("approvalId")
     if not log_id:
         return {"txStatus": "CREATED"}
 
@@ -238,6 +240,17 @@ async def tx_confirm_node(state: Dict[str, Any]) -> Dict[str, Any]:
         log.block_number = block_number
         log.status = "SUBMITTED"
         db.add(log)
+        if approval_id:
+            approval = db.exec(
+                select(ProofApproval).where(
+                    ProofApproval.approval_id == approval_id,
+                    ProofApproval.log_id == log.id,
+                )
+            ).first()
+            if approval and approval.used_at is None:
+                approval.used_at = datetime.utcnow()
+                approval.tx_hash = tx_hash
+                db.add(approval)
         db.commit()
     return {"txStatus": "SUBMITTED" if tx_hash else "CREATED"}
 
@@ -353,14 +366,16 @@ async def progress_update_node(state: Dict[str, Any]) -> Dict[str, Any]:
             DailyLog.challenge_id == challenge_id,
         )
     ).all()
-    completed_days = sorted({l.day_index for l in logs})
+    completed_days = sorted(
+        {log.day_index for log in logs if is_log_eligible(log)}
+    )
 
     today_checked_in = bool(log)
     milestones = progress.milestones or {"1": None, "2": None, "3": None}
 
     return {
         "logId": log.id if log else None,
-        "streak": progress.streak or 0,
+        "streak": eligible_streak(logs),
         "completedDays": completed_days,
         "todayCheckedIn": today_checked_in,
         "dateKey": date_key,
@@ -420,6 +435,7 @@ async def weekly_report_node(state: Dict[str, Any]) -> Dict[str, Any]:
             DailyLog.challenge_id == challenge_id,
         ).order_by(DailyLog.date_key)
     ).all()
+    logs = [log for log in logs if is_log_eligible(log)]
     range_logs = logs[-7:] if logs else []
     payload = _report_payload(range_logs, "周报（模拟）", "week")
     if range_logs:
@@ -437,6 +453,7 @@ async def final_report_node(state: Dict[str, Any]) -> Dict[str, Any]:
             DailyLog.challenge_id == challenge_id,
         ).order_by(DailyLog.date_key)
     ).all()
+    logs = [log for log in logs if is_log_eligible(log)]
     payload = _report_payload(logs, "结营报告（模拟）", "final")
     if logs:
         payload["reportText"] = await generate_report_text(logs, "final")

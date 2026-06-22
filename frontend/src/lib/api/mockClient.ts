@@ -143,6 +143,8 @@ async function checkin(params: { address: string; dayIndex: number; text: string
     reflection,
     saltHex,
     proofHash,
+    proofStatus: "ACTIVE",
+    effectiveProofHash: proofHash,
     status: "CREATED",
     txHash: null,
     dayNftTxHash: null,

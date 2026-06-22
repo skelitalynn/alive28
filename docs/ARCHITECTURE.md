@@ -42,6 +42,7 @@ Wallet ---------- Solidity contracts
 - `backend/app/services/checkpoint.py`：兼容 SpoonOS Graph 接口的 SQLite 持久化 Checkpointer。
 - `backend/app/services/auth.py`：一次性钱包 challenge、EIP-191 签名恢复和服务端 session。
 - `backend/app/services/chain.py`：RPC receipt、sender、contract、chain 和 event 验证。
+- `backend/app/services/proof_approval.py`：短期 validator 批准签名、有效 Proof 选择和待处理批准失效。
 - `backend/app/services/report.py`：周报与结营报告生成。
 - `backend/app/services/nft_image.py`：Pollinations、Gemini 和 SVG fallback。
 - `backend/app/models.py`：业务记录、Graph Checkpoint、钱包 challenge 与 session。
@@ -63,7 +64,7 @@ Graph 是确定性工作流。LLM 只参与 Reflection 和报告文本，不控�
 
 ### 合约
 
-- `ProofRegistry.sol`：每个地址、每天只保存一次 `bytes32` Proof。
+- `ProofRegistry.sol`：只接受 validator 对合约、链、用户、日期、Proof、期限和单次批准 ID 的绑定签名；每个地址、每天只保存一次 `bytes32` Proof。
 - `RestartBadgeNFT.sol`：存在 Proof 时铸造 Day NFT，28 个 Day NFT 后铸造 Final NFT。
 - `MilestoneNFT.sol`：用户为自己铸造指定 token ID 与 URI。
 
@@ -134,16 +135,31 @@ GET /report
 ### 链上确认
 
 ```text
-Browser sends transaction
+POST /proof/approval(logId)
+  -> require wallet session and owned persisted DailyLog
+  -> require ACTIVE safety-approved proof and no confirmed tx
+  -> return short-lived validator signature
+Browser sends submitProof(dayIndex, proofHash, deadline, approvalId, signature)
   -> client submits txHash to backend
   -> backend queries configured RPC
   -> verify configured chain and successful receipt
   -> verify transaction sender and target contract
-  -> verify ProofSubmitted / DayMinted / FinalMinted / Transfer event
+  -> verify ProofSubmitted event includes the approved proof and approvalId
+  -> mark the approval consumed and write submitted state
   -> backend writes submitted/minted state
 ```
 
 客户端提交的 `chainId`、`contractAddress` 和 `address` 均为不可信输入。RPC 不可用、交易回滚、发送者不匹配、目标合约错误或事件内容错误时，本地状态不改变。
+
+### Proof 补偿
+
+`POST /proof/compensate` 只追加 `ProofCompensation` 审计记录，不删除原交易或原始 Proof：
+
+- `REVOKE` 可用于待提交或已提交记录，会使所有未消费批准失效；该记录不再参与进度、报告、Day NFT 本地确认或里程碑资格计算。
+- `SUPERSEDE` 只允许用于已经上链的 Proof，记录产品层认可的替代哈希；它不会为任意替代哈希签发新的链上批准。
+- `DailyLog.tx_hash` 和链上历史保持不变，因此该流程是补偿，不是回滚。
+
+当前 revoke/supersede 状态存放在后端产品读取模型中，并不删除已存在的链上 Proof 或已经铸造的 NFT。若要求合约本身阻止撤销后的后续铸造，需要后续增加链上补偿事件和合约状态读取。
 
 ## 数据与隐私
 

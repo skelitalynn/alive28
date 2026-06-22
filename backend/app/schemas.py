@@ -93,6 +93,8 @@ class DailyLogResponse(BaseModel):
     reflection: Reflection
     saltHex: str
     proofHash: str
+    proofStatus: str
+    effectiveProofHash: str
     status: str
     txHash: Optional[str] = None
     dayNftTxHash: Optional[str] = None
@@ -154,10 +156,41 @@ class TxConfirmRequest(BaseModel):
     txHash: str
     chainId: int
     contractAddress: str
+    approvalId: Optional[str] = None
 
 
 class TxConfirmResponse(BaseModel):
     ok: bool
+
+
+class ProofApprovalRequest(BaseModel):
+    address: str
+    logId: str
+
+
+class ProofApprovalResponse(BaseModel):
+    approvalId: str
+    deadline: int
+    signature: str
+    proofHash: str
+
+
+class ProofCompensationRequest(BaseModel):
+    address: str
+    logId: str
+    action: Literal["revoke", "supersede"]
+    reason: str = Field(min_length=3, max_length=500)
+    replacementProofHash: Optional[str] = None
+
+
+class ProofCompensationResponse(BaseModel):
+    id: str
+    logId: str
+    action: str
+    reason: str
+    previousProofHash: str
+    replacementProofHash: Optional[str] = None
+    createdAt: str
 
 
 class NftConfirmRequest(BaseModel):

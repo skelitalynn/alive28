@@ -20,7 +20,10 @@ const ProofRegistryAbi = [
     stateMutability: "nonpayable",
     inputs: [
       { name: "dayIndex", type: "uint16" },
-      { name: "proofHash", type: "bytes32" }
+      { name: "proofHash", type: "bytes32" },
+      { name: "deadline", type: "uint64" },
+      { name: "approvalId", type: "bytes32" },
+      { name: "signature", type: "bytes" }
     ],
     outputs: []
   }
@@ -177,6 +180,12 @@ function mapLog(raw: any): DailyLog {
     reflection: raw.reflection ?? { note: "", next: "" },
     saltHex: raw.saltHex ?? raw.salt_hex,
     proofHash: raw.proofHash ?? raw.proof_hash,
+    proofStatus: raw.proofStatus ?? raw.proof_status ?? "ACTIVE",
+    effectiveProofHash:
+      raw.effectiveProofHash ??
+      raw.effective_proof_hash ??
+      raw.proofHash ??
+      raw.proof_hash,
     status: raw.status,
     txHash: raw.txHash ?? raw.tx_hash ?? null,
     dayNftTxHash: raw.dayNftTxHash ?? raw.day_nft_tx_hash ?? null,
@@ -245,10 +254,28 @@ async function submitProof(params: { address: string }): Promise<DailyLog> {
   if (!log) throw new Error("请先 checkin 生成 proofHash");
   if (log.txHash) throw new Error("已提交过 Proof（幂等）");
 
+  const approval = await fetchJson<{
+    approvalId: `0x${string}`;
+    deadline: number;
+    signature: `0x${string}`;
+    proofHash: `0x${string}`;
+  }>("/proof/approval", {
+    method: "POST",
+    body: JSON.stringify({
+      address: params.address,
+      logId: log.id
+    })
+  });
   const data = encodeFunctionData({
     abi: ProofRegistryAbi,
     functionName: "submitProof",
-    args: [log.dayIndex, log.proofHash as `0x${string}`]
+    args: [
+      log.dayIndex,
+      approval.proofHash,
+      BigInt(approval.deadline),
+      approval.approvalId,
+      approval.signature
+    ]
   });
   const txHash = await sendTx({ to: PROOF_REGISTRY, data });
 
@@ -259,7 +286,8 @@ async function submitProof(params: { address: string }): Promise<DailyLog> {
       address: params.address,
       txHash,
       chainId: CHAIN_ID,
-      contractAddress: PROOF_REGISTRY
+      contractAddress: PROOF_REGISTRY,
+      approvalId: approval.approvalId
     })
   });
 

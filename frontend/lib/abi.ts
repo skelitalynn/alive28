@@ -5,7 +5,10 @@ export const ProofRegistryABI = [
     "stateMutability": "nonpayable",
     "inputs": [
       { "name": "dayIndex", "type": "uint16" },
-      { "name": "proofHash", "type": "bytes32" }
+      { "name": "proofHash", "type": "bytes32" },
+      { "name": "deadline", "type": "uint64" },
+      { "name": "approvalId", "type": "bytes32" },
+      { "name": "signature", "type": "bytes" }
     ],
     "outputs": []
   }

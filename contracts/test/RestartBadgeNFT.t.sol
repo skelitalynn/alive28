@@ -6,13 +6,40 @@ import "../src/ProofRegistry.sol";
 import "../src/RestartBadgeNFT.sol";
 
 contract RestartBadgeNFTTest is Test {
+    uint256 validatorKey = 0xA11CE;
     ProofRegistry registry;
     RestartBadgeNFT nft;
     address user = address(0x1234);
 
     function setUp() public {
-        registry = new ProofRegistry();
+        registry = new ProofRegistry(vm.addr(validatorKey));
         nft = new RestartBadgeNFT(address(registry), "https://example.com/metadata/");
+    }
+
+    function _submitProof(uint16 dayIndex, bytes32 proofHash) internal {
+        bytes32 approvalId = keccak256(
+            abi.encodePacked("approval", dayIndex)
+        );
+        uint64 deadline = uint64(block.timestamp + 5 minutes);
+        bytes32 digest = registry.approvalDigest(
+            user,
+            dayIndex,
+            proofHash,
+            deadline,
+            approvalId
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            validatorKey,
+            digest
+        );
+        vm.prank(user);
+        registry.submitProof(
+            dayIndex,
+            proofHash,
+            deadline,
+            approvalId,
+            abi.encodePacked(r, s, v)
+        );
     }
 
     function testMintDayRequiresProof() public {
@@ -22,8 +49,7 @@ contract RestartBadgeNFTTest is Test {
     }
 
     function testMintDayOnceAndTransferable() public {
-        vm.prank(user);
-        registry.submitProof(1, bytes32(uint256(1)));
+        _submitProof(1, bytes32(uint256(1)));
 
         vm.prank(user);
         nft.mintDay(1);
@@ -45,8 +71,7 @@ contract RestartBadgeNFTTest is Test {
         nft.composeFinal();
 
         for (uint16 i = 1; i <= 28; i++) {
-            vm.prank(user);
-            registry.submitProof(i, bytes32(uint256(i)));
+            _submitProof(i, bytes32(uint256(i)));
             vm.prank(user);
             nft.mintDay(uint8(i));
         }

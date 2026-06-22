@@ -11,6 +11,7 @@ export type DailyTask = {
 };
 
 export type DailyLogStatus = "CREATED" | "SUBMITTED";
+export type ProofStatus = "ACTIVE" | "REVOKED" | "SUPERSEDED";
 
 export type DailyLog = {
   id: string;
@@ -22,6 +23,8 @@ export type DailyLog = {
   reflection: Reflection;
   saltHex: string;
   proofHash: string;
+  proofStatus: ProofStatus;
+  effectiveProofHash: string;
   status: DailyLogStatus;
   txHash: string | null;
   dayNftTxHash: string | null;

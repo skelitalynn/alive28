@@ -47,6 +47,7 @@ class GraphState(TypedDict, total=False):
     blockNumber: Optional[int]
     chainId: Optional[int]
     contractAddress: Optional[str]
+    approvalId: Optional[str]
     streak: int
     completedDays: List[int]
     todayCheckedIn: bool

@@ -67,6 +67,7 @@ class ChainVerifier:
         contract_address: str,
         day_index: int,
         proof_hash: str,
+        approval_id: str,
     ) -> VerifiedReceipt:
         expected_contract = settings.proof_registry_address.lower()
         transaction, receipt = self._verify_transaction(
@@ -77,15 +78,16 @@ class ChainVerifier:
             expected_contract=expected_contract,
         )
         del transaction
-        topic0 = _event_topic("ProofSubmitted(address,uint16,bytes32)")
+        topic0 = _event_topic("ProofSubmitted(address,uint16,bytes32,bytes32)")
         for log in receipt.get("logs", []):
             topics = log.get("topics", [])
             if (
                 _address(log.get("address")) == expected_contract
-                and len(topics) >= 3
+                and len(topics) >= 4
                 and _hex(topics[0]) == topic0
                 and _topic_address(topics[1]) == address
                 and _topic_int(topics[2]) == day_index
+                and _hex(topics[3]) == approval_id.lower()
                 and _hex(log.get("data")) == proof_hash.lower()
             ):
                 return VerifiedReceipt(

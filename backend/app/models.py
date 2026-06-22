@@ -39,6 +39,8 @@ class DailyLog(SQLModel, table=True):
     reflection: dict = Field(sa_column=Column(JSON))
     salt_hex: str = Field(max_length=128)
     proof_hash: str = Field(max_length=66)
+    proof_status: str = Field(default="ACTIVE", max_length=24, index=True)
+    effective_proof_hash: Optional[str] = Field(default=None, max_length=66)
     status: str = Field(default="CREATED", max_length=24, index=True)
     chain_id: Optional[int] = Field(default=None)
     contract_address: Optional[str] = Field(default=None, max_length=42)
@@ -46,6 +48,32 @@ class DailyLog(SQLModel, table=True):
     day_nft_tx_hash: Optional[str] = Field(default=None, max_length=66)
     block_number: Optional[int] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ProofApproval(SQLModel, table=True):
+    id: str = Field(primary_key=True, max_length=36)
+    approval_id: str = Field(index=True, unique=True, max_length=66)
+    log_id: str = Field(index=True, max_length=36)
+    address: str = Field(index=True, max_length=42)
+    day_index: int = Field(index=True)
+    proof_hash: str = Field(max_length=66)
+    deadline: int = Field(index=True)
+    signature: str = Field(max_length=132)
+    tx_hash: Optional[str] = Field(default=None, max_length=66)
+    used_at: Optional[datetime] = Field(default=None, index=True)
+    invalidated_at: Optional[datetime] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+
+class ProofCompensation(SQLModel, table=True):
+    id: str = Field(primary_key=True, max_length=36)
+    log_id: str = Field(index=True, max_length=36)
+    address: str = Field(index=True, max_length=42)
+    action: str = Field(max_length=24, index=True)
+    reason: str = Field(max_length=500)
+    previous_proof_hash: str = Field(max_length=66)
+    replacement_proof_hash: Optional[str] = Field(default=None, max_length=66)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
 
 class GraphCheckpoint(SQLModel, table=True):

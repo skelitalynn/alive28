@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 import json
 import hashlib
+import time
 import uuid
 from typing import Dict, Any, Optional
 
@@ -24,6 +25,10 @@ from .schemas import (
     CheckinResponse,
     TxConfirmRequest,
     TxConfirmResponse,
+    ProofApprovalRequest,
+    ProofApprovalResponse,
+    ProofCompensationRequest,
+    ProofCompensationResponse,
     NftConfirmRequest,
     NftConfirmResponse,
     ProgressResponse,
@@ -38,7 +43,12 @@ from .schemas import (
     GenerateNftRequest,
     GenerateNftResponse,
 )
-from .models import UserProgress, DailyLog
+from .models import (
+    UserProgress,
+    DailyLog,
+    ProofApproval,
+    ProofCompensation,
+)
 from .services.tasks import get_task_by_day_index
 from .services.time import date_key_for_timezone, diff_days, date_key_for_day_index
 from .graph.agent import create_agent
@@ -55,6 +65,14 @@ from .services.chain import (
     ChainVerificationError,
     ChainVerifier,
     get_chain_verifier,
+)
+from .services.proof_approval import (
+    ProofApprovalError,
+    create_or_get_approval,
+    eligible_streak,
+    effective_proof_hash,
+    invalidate_pending_approvals,
+    is_log_eligible,
 )
 from spoon_ai.graph.types import Command, StateSnapshot
 
@@ -154,6 +172,8 @@ def _log_to_response(log: DailyLog) -> Dict[str, Any]:
         "reflection": _parse_reflection(log.reflection),
         "saltHex": log.salt_hex,
         "proofHash": log.proof_hash,
+        "proofStatus": log.proof_status,
+        "effectiveProofHash": effective_proof_hash(log),
         "status": log.status,
         "txHash": log.tx_hash,
         "dayNftTxHash": log.day_nft_tx_hash,
@@ -232,6 +252,17 @@ def _checkin_execution(result: Dict[str, Any]) -> Dict[str, Any]:
         "nodeAttempts": result.get("nodeAttempts") or {},
         "lastError": public_error,
     }
+
+
+def _require_proof_hash(value: str | None) -> str:
+    normalized = (value or "").strip().lower()
+    if (
+        not normalized.startswith("0x")
+        or len(normalized) != 66
+        or any(char not in "0123456789abcdef" for char in normalized[2:])
+    ):
+        _http_error(400, "INVALID_ARGUMENT", "invalid bytes32 proof hash")
+    return normalized
 
 
 def _compact_completed_state(result: Dict[str, Any]) -> Dict[str, Any]:
@@ -641,8 +672,36 @@ async def tx_confirm(
         _http_error(403, "ADDRESS_FORBIDDEN", "log belongs to another address")
     if log.tx_hash:
         return {"ok": True}
+    if log.proof_status != "ACTIVE":
+        _http_error(
+            409,
+            "PROOF_NOT_ACTIVE",
+            "only an active safety-approved proof can be confirmed",
+        )
     verified = None
+    approval = None
     if not settings.demo_mode:
+        if not payload.approvalId:
+            _http_error(400, "APPROVAL_REQUIRED", "approvalId is required")
+        approval = session.exec(
+            select(ProofApproval).where(
+                ProofApproval.approval_id == payload.approvalId.lower(),
+                ProofApproval.log_id == log.id,
+                ProofApproval.address == address,
+            )
+        ).first()
+        if (
+            not approval
+            or approval.proof_hash != effective_proof_hash(log)
+            or approval.used_at is not None
+            or approval.invalidated_at is not None
+            or approval.deadline < int(time.time())
+        ):
+            _http_error(
+                400,
+                "INVALID_APPROVAL",
+                "approval is missing, expired, consumed, or invalidated",
+            )
         try:
             verified = verifier.verify_proof_submission(
                 tx_hash=payload.txHash,
@@ -650,7 +709,8 @@ async def tx_confirm(
                 chain_id=payload.chainId,
                 contract_address=payload.contractAddress,
                 day_index=log.day_index,
-                proof_hash=log.proof_hash,
+                proof_hash=effective_proof_hash(log),
+                approval_id=approval.approval_id,
             )
         except ChainVerificationError as exc:
             _http_error(400, "INVALID_CHAIN_RECEIPT", str(exc))
@@ -663,9 +723,119 @@ async def tx_confirm(
         "chainId": payload.chainId,
         "contractAddress": payload.contractAddress,
         "blockNumber": verified.block_number if verified else None,
+        "approvalId": approval.approval_id if approval else None,
     }
     await _invoke_graph(state)
     return {"ok": True}
+
+
+@router.post("/proof/approval", response_model=ProofApprovalResponse)
+def proof_approval(
+    payload: ProofApprovalRequest,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    address = _require_address(payload.address)
+    _authorize_address(address, authorization, session)
+    log = session.get(DailyLog, payload.logId)
+    if not log:
+        _http_error(404, "NOT_FOUND", "logId not found")
+    if log.address != address:
+        _http_error(403, "ADDRESS_FORBIDDEN", "log belongs to another address")
+    if log.proof_status != "ACTIVE":
+        _http_error(
+            409,
+            "PROOF_NOT_ACTIVE",
+            "only the original active safety-approved proof can be approved",
+        )
+    if log.tx_hash:
+        _http_error(409, "PROOF_ALREADY_SUBMITTED", "proof is already on-chain")
+    try:
+        approval = create_or_get_approval(session, log)
+        session.commit()
+        session.refresh(approval)
+    except ProofApprovalError as exc:
+        session.rollback()
+        _http_error(503, "APPROVAL_UNAVAILABLE", str(exc))
+    return {
+        "approvalId": approval.approval_id,
+        "deadline": approval.deadline,
+        "signature": approval.signature,
+        "proofHash": approval.proof_hash,
+    }
+
+
+@router.post("/proof/compensate", response_model=ProofCompensationResponse)
+def compensate_proof(
+    payload: ProofCompensationRequest,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    address = _require_address(payload.address)
+    _authorize_address(address, authorization, session)
+    log = session.get(DailyLog, payload.logId)
+    if not log:
+        _http_error(404, "NOT_FOUND", "logId not found")
+    if log.address != address:
+        _http_error(403, "ADDRESS_FORBIDDEN", "log belongs to another address")
+
+    previous_hash = effective_proof_hash(log)
+    replacement_hash = None
+    if payload.action == "revoke":
+        if log.proof_status == "REVOKED":
+            _http_error(409, "PROOF_ALREADY_REVOKED", "proof is already revoked")
+        log.proof_status = "REVOKED"
+    else:
+        if not log.tx_hash:
+            _http_error(
+                409,
+                "PROOF_NOT_SUBMITTED",
+                "supersede is a compensation for an already submitted proof",
+            )
+        replacement_hash = _require_proof_hash(payload.replacementProofHash)
+        if replacement_hash == previous_hash:
+            _http_error(
+                400,
+                "INVALID_ARGUMENT",
+                "replacement proof must differ from current proof",
+            )
+        log.proof_status = "SUPERSEDED"
+        log.effective_proof_hash = replacement_hash
+
+    audit = ProofCompensation(
+        id=str(uuid.uuid4()),
+        log_id=log.id,
+        address=address,
+        action=payload.action.upper(),
+        reason=payload.reason.strip(),
+        previous_proof_hash=previous_hash,
+        replacement_proof_hash=replacement_hash,
+    )
+    invalidate_pending_approvals(session, log.id)
+    session.add(log)
+    session.add(audit)
+    progress = session.get(UserProgress, address)
+    if progress:
+        logs = session.exec(
+            select(DailyLog).where(
+                DailyLog.address == address,
+                DailyLog.challenge_id == settings.challenge_id,
+            )
+        ).all()
+        progress.streak = eligible_streak(logs)
+        progress.updated_at = datetime.utcnow()
+        session.add(progress)
+    session.commit()
+    session.refresh(audit)
+    return {
+        "id": audit.id,
+        "logId": audit.log_id,
+        "action": audit.action,
+        "reason": audit.reason,
+        "previousProofHash": audit.previous_proof_hash,
+        "replacementProofHash": audit.replacement_proof_hash,
+        "createdAt": audit.created_at.isoformat() + "Z",
+    }
 
 
 @router.post("/nft/confirm", response_model=NftConfirmResponse)
@@ -689,6 +859,8 @@ def nft_confirm(
         ).first()
         if not log:
             _http_error(404, "NOT_FOUND", "log not found for dayIndex")
+        if not is_log_eligible(log):
+            _http_error(409, "PROOF_REVOKED", "revoked proof cannot mint a day NFT")
         if log.day_nft_tx_hash:
             return {"ok": True}
         if not settings.demo_mode:
@@ -763,7 +935,7 @@ def milestone_mint(
             DailyLog.challenge_id == settings.challenge_id,
         )
     ).all()
-    completed_days = {l.day_index for l in logs}
+    completed_days = {l.day_index for l in logs if is_log_eligible(l)}
     completed_count = len(completed_days)
     required = 7 if milestone_id == 1 else 14 if milestone_id == 2 else 28
 
@@ -833,10 +1005,13 @@ async def progress(
             DailyLog.challenge_id == settings.challenge_id,
         )
     ).all()
-    day_mint_count = sum(1 for l in logs if getattr(l, "day_nft_tx_hash", None))
+    eligible_logs = [log for log in logs if is_log_eligible(log)]
+    day_mint_count = sum(
+        1 for log in eligible_logs if getattr(log, "day_nft_tx_hash", None)
+    )
     mintable_day_index = None
     for d in range(1, 29):
-        log_d = next((l for l in logs if l.day_index == d), None)
+        log_d = next((l for l in eligible_logs if l.day_index == d), None)
         if log_d and log_d.tx_hash and not getattr(log_d, "day_nft_tx_hash", None):
             mintable_day_index = d
             break

@@ -17,6 +17,8 @@ class Settings(BaseModel):
     llm_model: str = os.getenv("DEFAULT_MODEL", "deepseek-chat")
     auth_nonce_ttl_seconds: int = int(os.getenv("AUTH_NONCE_TTL_SECONDS", "300"))
     auth_session_ttl_seconds: int = int(os.getenv("AUTH_SESSION_TTL_SECONDS", "86400"))
+    proof_approval_private_key: str = os.getenv("PROOF_APPROVAL_PRIVATE_KEY", "")
+    proof_approval_ttl_seconds: int = int(os.getenv("PROOF_APPROVAL_TTL_SECONDS", "300"))
     demo_mode: bool = os.getenv("DEMO_MODE", "false").lower() == "true"
     demo_start_date_key: str = os.getenv("DEMO_START_DATE_KEY", "")
 

@@ -4,7 +4,7 @@
 
 ## 当前目标
 
-`F-004 Wallet Authentication and Trusted Receipt` 已完成实现与本地验证。下一阶段进入 Proof 上链批准与 revoke/supersede 补偿语义。
+`F-005 Proof Approval and Compensation Semantics` 已完成实现与本地验证。当前实现覆盖 validator 批准签名、合约单次消费、补偿审计和撤销后的资格过滤。
 
 ## 最近完成
 
@@ -29,6 +29,10 @@
 - 前端连接钱包后先签名认证，再向页面暴露地址；token 仅保存在 `sessionStorage`。
 - Proof、Day/Final NFT 和 Milestone 确认会通过配置 RPC 核对 chain、receipt、sender、contract 和 event。
 - 伪造地址、重复 nonce、伪造 txHash 或错误事件不会改变本地状态。
+- 只有持久化且仍为 `ACTIVE` 的安全打卡可以获得短期 validator 批准；签名绑定合约、链、钱包、日期、Proof、期限和批准 ID。
+- ProofRegistry 拒绝无效、过期和重复批准；后端在可信 receipt 确认后把批准标记为已消费。
+- revoke/supersede 追加补偿审计，不删除链上交易；待处理批准会失效。
+- 被撤销记录不再参与进度、报告、Day NFT 本地确认或里程碑资格；替代哈希不会绕过安全 Graph 获得新批准。
 
 ## 当前实现状态
 
@@ -57,7 +61,7 @@
 
 - 后端已有 Reflection Safety 和完整打卡路由集成测试，但其他业务链路覆盖仍少。
 - 前端没有自动化测试。
-- 数据库没有迁移工具，只使用 `create_all()`。
+- 数据库仍未引入正式迁移工具；F-005 提供一次性 SQLite 迁移脚本。
 - 没有 CI。
 - `mockClient.ts`、`spoonClient.ts`、`spoonAgent.ts` 和旧 `frontend/lib/api.ts` 形成重复实现。
 - 部分源码仍存在历史编码损坏。
@@ -67,18 +71,18 @@
 2026-06-22：
 
 - SpoonOS SDK 锁定为 `spoon-ai-sdk==0.4.10`。
-- 后端测试：25 passed。
-- 合约测试：5 passed。
+- 后端测试：28 passed。
+- 合约测试：6 passed。
 - Next.js 生产构建通过。
 - Harness 文档路由检查通过。
 - `F-002`、`F-003` 与 `F-004` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
 
 ## 下一步建议
 
-1. 为通过安全 Graph 的 Proof 引入短期、单次上链批准。
-2. 定义 Proof 的 revoke、supersede 和不可变审计记录。
-3. 让被撤销 Proof 不再参与里程碑资格。
-4. 为 Checkpoint、challenge 和 session 增加过期清理与数据迁移。
-5. 后续按 Phase 4–5 处理隐私、长期记忆、历史前端 Agent 清理、迁移和 CI。
+1. 为 Checkpoint、challenge、session 和过期批准增加清理任务。
+2. 按 Phase 4 处理图片 Prompt 去原文化和数据最小化。
+3. 为长期记忆增加明确授权、查看、删除和撤回。
+4. 决定是否把 Proof 补偿状态同步到链上，阻止撤销后的合约级后续铸造。
+5. 清理历史前端 Agent，实现正式数据库迁移和 CI。
 
 实际执行顺序由 `docs/FEATURES.json` 中唯一的 `active` 功能项决定。

@@ -6,12 +6,12 @@ from eth_account.messages import encode_defunct
 from eth_utils import keccak
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import SQLModel, Session, create_engine, select
 
 from backend.app.config import settings
 from backend.app.database import get_session
 from backend.app.main import app
-from backend.app.models import DailyLog, UserProgress
+from backend.app.models import DailyLog, ProofApproval, UserProgress
 from backend.app.services.chain import (
     ChainVerificationError,
     ChainVerifier,
@@ -131,6 +131,11 @@ def test_unverified_proof_transaction_does_not_change_local_state(monkeypatch):
     monkeypatch.setattr(settings, "demo_mode", False)
     monkeypatch.setattr(
         settings,
+        "proof_approval_private_key",
+        Account.create().key.hex(),
+    )
+    monkeypatch.setattr(
+        settings,
         "proof_registry_address",
         "0x9999999999999999999999999999999999999999",
     )
@@ -164,6 +169,11 @@ def test_unverified_proof_transaction_does_not_change_local_state(monkeypatch):
         )
         assert checkin.status_code == 200
         log = checkin.json()["log"]
+        approval = client.post(
+            "/proof/approval",
+            headers=headers,
+            json={"address": address, "logId": log["id"]},
+        ).json()
 
         confirmation = client.post(
             "/tx/confirm",
@@ -174,6 +184,7 @@ def test_unverified_proof_transaction_does_not_change_local_state(monkeypatch):
                 "txHash": "0x" + "ab" * 32,
                 "chainId": settings.chain_id,
                 "contractAddress": settings.proof_registry_address,
+                "approvalId": approval["approvalId"],
             },
         )
         assert confirmation.status_code == 400
@@ -210,6 +221,11 @@ def test_verified_proof_transaction_updates_the_owned_log(monkeypatch):
     monkeypatch.setattr(settings, "demo_mode", False)
     monkeypatch.setattr(
         settings,
+        "proof_approval_private_key",
+        Account.create().key.hex(),
+    )
+    monkeypatch.setattr(
+        settings,
         "proof_registry_address",
         "0x9999999999999999999999999999999999999999",
     )
@@ -244,6 +260,11 @@ def test_verified_proof_transaction_updates_the_owned_log(monkeypatch):
         )
         assert checkin.status_code == 200
         log = checkin.json()["log"]
+        approval = client.post(
+            "/proof/approval",
+            headers=headers,
+            json={"address": address, "logId": log["id"]},
+        ).json()
         tx_hash = "0x" + "cd" * 32
 
         confirmation = client.post(
@@ -255,6 +276,7 @@ def test_verified_proof_transaction_updates_the_owned_log(monkeypatch):
                 "txHash": tx_hash,
                 "chainId": settings.chain_id,
                 "contractAddress": settings.proof_registry_address,
+                "approvalId": approval["approvalId"],
             },
         )
         assert confirmation.status_code == 200
@@ -263,6 +285,13 @@ def test_verified_proof_transaction_updates_the_owned_log(monkeypatch):
             stored = session.get(DailyLog, log["id"])
             assert stored.tx_hash == tx_hash
             assert stored.block_number == 123456
+            stored_approval = session.exec(
+                select(ProofApproval).where(
+                    ProofApproval.approval_id == approval["approvalId"]
+                )
+            ).first()
+            assert stored_approval.used_at is not None
+            assert stored_approval.tx_hash == tx_hash
     finally:
         app.dependency_overrides.clear()
 
@@ -352,9 +381,10 @@ def test_chain_verifier_requires_matching_sender_contract_and_proof_event(
     address = account.address.lower()
     contract = "0x9999999999999999999999999999999999999999"
     proof_hash = "0x" + "12" * 32
+    approval_id = "0x" + "56" * 32
     day_index = 3
     event_topic = "0x" + keccak(
-        text="ProofSubmitted(address,uint16,bytes32)"
+        text="ProofSubmitted(address,uint16,bytes32,bytes32)"
     ).hex()
     user_topic = "0x" + "00" * 12 + address[2:]
     day_topic = "0x" + day_index.to_bytes(32, "big").hex()
@@ -368,7 +398,12 @@ def test_chain_verifier_requires_matching_sender_contract_and_proof_event(
             "logs": [
                 {
                     "address": contract,
-                    "topics": [event_topic, user_topic, day_topic],
+                    "topics": [
+                        event_topic,
+                        user_topic,
+                        day_topic,
+                        approval_id,
+                    ],
                     "data": proof_hash,
                 }
             ],
@@ -394,6 +429,7 @@ def test_chain_verifier_requires_matching_sender_contract_and_proof_event(
         contract_address=contract,
         day_index=day_index,
         proof_hash=proof_hash,
+        approval_id=approval_id,
     )
     assert verified.block_number == 9988
 
@@ -412,6 +448,7 @@ def test_chain_verifier_requires_matching_sender_contract_and_proof_event(
             contract_address=contract,
             day_index=day_index,
             proof_hash=proof_hash,
+            approval_id=approval_id,
         )
 
 

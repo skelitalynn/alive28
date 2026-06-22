@@ -40,6 +40,17 @@
       ],
       "evidence": ".harness\\evidence\\F-004\\20260622T082351Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-005",
+      "behavior": "Only a persisted, safety-approved checkin can obtain a short-lived single-use validator signature accepted by ProofRegistry; revoke and supersede append immutable compensation records, invalidate pending approvals, and revoked proofs no longer count toward progress or milestone eligibility.",
+      "state": "passing",
+      "verification": [
+        ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_proof_approval_and_compensation.py backend\\app\\tests\\test_wallet_auth_and_receipts.py backend\\app\\tests\\test_checkpoint_recovery.py backend\\app\\tests\\test_reflection_safety.py backend\\app\\tests\\test_core.py -q",
+        "forge test --root contracts"
+      ],
+      "evidence": ".harness\\evidence\\F-005\\20260622T085550Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }
