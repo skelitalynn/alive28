@@ -5,7 +5,7 @@
 | 范围 | 命令 | 当前覆盖 |
 |---|---|---|
 | Harness 和文档 | `python scripts/harness/check_docs.py` | 文档路由、配置和本地链接 |
-| 后端 | `python -m pytest backend/app/tests -q` | 钱包认证、receipt/event、Reflection Safety、Checkpoint、事务与幂等 |
+| 后端 | `python -m pytest backend/app/tests -q` | 钱包认证、receipt/event、Reflection Safety、Checkpoint、生命周期清理、事务与幂等 |
 | 前端 | `npm --prefix frontend run build` | Next.js 构建和 TypeScript 检查 |
 | 合约 | `forge test --root contracts` | ProofRegistry 与 RestartBadgeNFT |
 
@@ -86,7 +86,9 @@ Invoke-RestMethod "http://127.0.0.1:8000/report?address=0x1111111111111111111111
 - Proof receipt 的 chain、status、sender、contract 和事件匹配。
 - 伪造 Day NFT 与 Milestone 事件不会改变本地状态。
 
-仍缺少大规模离线安全评测、真实供应商故障测试、并发恢复竞争和 Checkpoint 生命周期测试。
+仍缺少大规模离线安全评测、真实供应商故障测试和并发恢复竞争测试。
+
+生命周期测试覆盖 dry-run、实际清理、重复执行、完成/未完成 Checkpoint 的不同保留期，以及业务记录和已消费批准的保留。
 
 ## Reflection Safety 计划验收
 

@@ -58,6 +58,8 @@ GET http://127.0.0.1:8000/health
 | `AUTH_SESSION_TTL_SECONDS` | 钱包 session 有效期 | `86400` |
 | `PROOF_APPROVAL_PRIVATE_KEY` | ProofRegistry validator 私钥，仅后端持有 | 必须配置 |
 | `PROOF_APPROVAL_TTL_SECONDS` | 单次 Proof 批准有效期（秒） | `300` |
+| `CHECKPOINT_COMPLETED_RETENTION_SECONDS` | 已完成 Checkpoint 保留期 | `604800`（7 天） |
+| `CHECKPOINT_INCOMPLETE_RETENTION_SECONDS` | 未完成/失败 Checkpoint 保留期 | `2592000`（30 天） |
 | `DEFAULT_LLM_PROVIDER` | SpoonOS 默认模型供应商 | `deepseek` |
 | `DEFAULT_MODEL` | 默认模型 | `deepseek-chat` |
 | `DEEPSEEK_API_KEY` | DeepSeek 密钥 | 必须替换示例值 |
@@ -68,6 +70,22 @@ GET http://127.0.0.1:8000/health
 
 `DEEPSEEK_MAX_TOKENS`、`DEEPSEEK_TIMEOUT` 等变量由 SDK 读取，不在
 `backend/app/config.py` 中直接消费。
+
+### 临时状态清理
+
+先预览候选数量：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\maintenance\cleanup.py --dry-run
+```
+
+确认后执行：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\maintenance\cleanup.py
+```
+
+命令可重复执行，适合由 Windows Task Scheduler、cron 或部署平台的定时任务调用。它只删除过期认证材料、过期未消费批准和超出保留期的 Checkpoint，不删除日记、补偿审计、已消费批准或链上确认记录。
 
 ## 前端
 

@@ -502,7 +502,7 @@ validatorVersion
 
 完成条件：故障注入测试证明流程可恢复且副作用幂等。
 
-状态：已完成。使用 SQLite 持久化 SpoonOS Checkpoint；相同 `checkinId` 可从失败节点恢复，冲突请求返回 409，响应暴露版本、耗时、尝试次数和 fallback 信息。数据库副作用采用显式重放，不做后台盲目自动重试。
+状态：已完成。使用 SQLite 持久化 SpoonOS Checkpoint；相同 `checkinId` 可从失败节点恢复，冲突请求返回 409，响应暴露版本、耗时、尝试次数和 fallback 信息。数据库副作用采用显式重放，不做后台盲目自动重试。F-006 增加已完成/未完成 Checkpoint 的独立保留窗口，以及认证和批准临时记录的幂等清理命令。
 
 ### Phase 3：身份和链上可信性
 

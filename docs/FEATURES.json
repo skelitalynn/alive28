@@ -51,6 +51,16 @@
       ],
       "evidence": ".harness\\evidence\\F-005\\20260622T085550Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-006",
+      "behavior": "A repeatable maintenance command removes expired wallet challenges, expired or revoked wallet sessions, expired unused proof approvals, and graph checkpoints beyond status-specific retention windows, while preserving active credentials, recoverable recent checkpoints, consumed approval audit records, and all business logs; dry-run reports the same candidates without mutating data.",
+      "state": "passing",
+      "verification": [
+        ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_ephemeral_cleanup.py backend\\app\\tests\\test_checkpoint_recovery.py backend\\app\\tests\\test_wallet_auth_and_receipts.py backend\\app\\tests\\test_proof_approval_and_compensation.py -q"
+      ],
+      "evidence": ".harness\\evidence\\F-006\\20260622T095419Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }

@@ -43,6 +43,7 @@ Wallet ---------- Solidity contracts
 - `backend/app/services/auth.py`：一次性钱包 challenge、EIP-191 签名恢复和服务端 session。
 - `backend/app/services/chain.py`：RPC receipt、sender、contract、chain 和 event 验证。
 - `backend/app/services/proof_approval.py`：短期 validator 批准签名、有效 Proof 选择和待处理批准失效。
+- `backend/app/services/cleanup.py`：过期 challenge/session/批准和超出保留期的 Graph Checkpoint 清理。
 - `backend/app/services/report.py`：周报与结营报告生成。
 - `backend/app/services/nft_image.py`：Pollinations、Gemini 和 SVG fallback。
 - `backend/app/models.py`：业务记录、Graph Checkpoint、钱包 challenge 与 session。
@@ -194,7 +195,7 @@ Browser sends submitProof(dayIndex, proofHash, deadline, approvalId, signature)
 
 当前响应还包含 Prompt/模型版本、模型调用次数、修复次数、fallback 原因、节点耗时、节点尝试次数和最后错误摘要。
 
-仍未完成：集中式指标后端、专业审核的危机资源、Checkpoint 过期/删除策略和更完整的离线评测集。
+仍未完成：集中式指标后端、专业审核的危机资源和更完整的离线评测集。
 
 ## 当前打卡工作流
 
@@ -287,6 +288,14 @@ LLM 可以提出工具调用参数，但 Graph 必须校验参数、调用结果
 - 节点耗时、尝试次数和最后错误。
 
 当前持久化后端是项目 SQLite。相同 `checkinId` 只能恢复原请求，不同输入会返回 `409 CHECKIN_ID_CONFLICT`。数据库副作用失败后不自动盲目重试，由调用方用同一请求显式恢复。
+
+临时状态通过显式维护命令清理：
+
+- 已完成 Checkpoint 默认保留 7 天。
+- 失败或未完成 Checkpoint 默认保留 30 天，给显式恢复留出更长窗口。
+- 已过期钱包 challenge、已过期或已撤销 session、已过期且未消费的 Proof 批准可立即清理。
+- 已消费批准、`DailyLog`、`ProofCompensation` 和链上确认字段不属于临时状态，不由该任务删除。
+- `--dry-run` 使用与实际清理相同的候选选择逻辑，但不执行数据库写入。
 
 ### 重试
 

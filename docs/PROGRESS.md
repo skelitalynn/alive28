@@ -4,7 +4,7 @@
 
 ## 当前目标
 
-`F-005 Proof Approval and Compensation Semantics` 已完成实现与本地验证。当前实现覆盖 validator 批准签名、合约单次消费、补偿审计和撤销后的资格过滤。
+`F-006 Ephemeral State Lifecycle Cleanup` 已完成实现与本地验证。过期认证、未消费批准和超期 Checkpoint 可安全清理，业务记录与审计证据保持不变。
 
 ## 最近完成
 
@@ -33,6 +33,7 @@
 - ProofRegistry 拒绝无效、过期和重复批准；后端在可信 receipt 确认后把批准标记为已消费。
 - revoke/supersede 追加补偿审计，不删除链上交易；待处理批准会失效。
 - 被撤销记录不再参与进度、报告、Day NFT 本地确认或里程碑资格；替代哈希不会绕过安全 Graph 获得新批准。
+- 新增可 dry-run、可重复执行的临时状态清理服务和运维命令。
 
 ## 当前实现状态
 
@@ -54,8 +55,6 @@
 - Pollinations 调用把用户内容放入 URL Prompt。
 - 危机分流模板尚未经过专业机构审核，也尚未根据用户地区动态提供资源。
 - 风险规则和语义禁区已有回归测试，但仍需要更完整的离线安全评测集。
-- ProofRegistry 仍是 permissionless 提交，尚未要求后端批准签名。
-- 已确认的链上 Proof 尚未实现 revoke/supersede 补偿记录。
 
 ### P1：工程可靠性
 
@@ -71,18 +70,17 @@
 2026-06-22：
 
 - SpoonOS SDK 锁定为 `spoon-ai-sdk==0.4.10`。
-- 后端测试：28 passed。
+- 后端测试：30 passed。
 - 合约测试：6 passed。
 - Next.js 生产构建通过。
 - Harness 文档路由检查通过。
-- `F-002`、`F-003` 与 `F-004` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
+- `F-002` 至 `F-006` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
 
 ## 下一步建议
 
-1. 为 Checkpoint、challenge、session 和过期批准增加清理任务。
-2. 按 Phase 4 处理图片 Prompt 去原文化和数据最小化。
-3. 为长期记忆增加明确授权、查看、删除和撤回。
-4. 决定是否把 Proof 补偿状态同步到链上，阻止撤销后的合约级后续铸造。
-5. 清理历史前端 Agent，实现正式数据库迁移和 CI。
+1. 按 Phase 4 处理图片 Prompt 去原文化和数据最小化。
+2. 为长期记忆增加明确授权、查看、删除和撤回。
+3. 决定是否把 Proof 补偿状态同步到链上，阻止撤销后的合约级后续铸造。
+4. 清理历史前端 Agent，实现正式数据库迁移和 CI。
 
 实际执行顺序由 `docs/FEATURES.json` 中唯一的 `active` 功能项决定。

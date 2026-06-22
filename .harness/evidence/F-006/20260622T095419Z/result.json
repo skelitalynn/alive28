@@ -1,0 +1,14 @@
+{
+  "feature_id": "F-006",
+  "verified_at": "20260622T095419Z",
+  "passed": true,
+  "commands": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_ephemeral_cleanup.py backend\\app\\tests\\test_checkpoint_recovery.py backend\\app\\tests\\test_wallet_auth_and_receipts.py backend\\app\\tests\\test_proof_approval_and_compensation.py -q",
+      "returncode": 0,
+      "log": ".harness\\evidence\\F-006\\20260622T095419Z\\command-01.log"
+    }
+  ],
+  "git_head": "386acde",
+  "working_tree_dirty": true
+}

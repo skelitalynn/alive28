@@ -19,6 +19,12 @@ class Settings(BaseModel):
     auth_session_ttl_seconds: int = int(os.getenv("AUTH_SESSION_TTL_SECONDS", "86400"))
     proof_approval_private_key: str = os.getenv("PROOF_APPROVAL_PRIVATE_KEY", "")
     proof_approval_ttl_seconds: int = int(os.getenv("PROOF_APPROVAL_TTL_SECONDS", "300"))
+    checkpoint_completed_retention_seconds: int = int(
+        os.getenv("CHECKPOINT_COMPLETED_RETENTION_SECONDS", "604800")
+    )
+    checkpoint_incomplete_retention_seconds: int = int(
+        os.getenv("CHECKPOINT_INCOMPLETE_RETENTION_SECONDS", "2592000")
+    )
     demo_mode: bool = os.getenv("DEMO_MODE", "false").lower() == "true"
     demo_start_date_key: str = os.getenv("DEMO_START_DATE_KEY", "")
 
