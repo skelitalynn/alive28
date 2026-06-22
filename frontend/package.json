@@ -9,22 +9,25 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "14.2.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "wagmi": "2.12.5",
-    "viem": "2.21.9",
+    "@tanstack/query-core": "5.51.1",
     "@tanstack/react-query": "5.51.1",
     "echarts": "5.5.1",
-    "echarts-for-react": "3.0.2"
+    "echarts-for-react": "3.0.2",
+    "encoding": "0.1.13",
+    "next": "14.2.5",
+    "pino-pretty": "11.2.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "viem": "2.21.9",
+    "wagmi": "2.12.5"
   },
   "devDependencies": {
-    "typescript": "5.5.4",
     "@types/node": "20.14.10",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
-    "tailwindcss": "3.4.6",
+    "autoprefixer": "10.4.19",
     "postcss": "8.4.39",
-    "autoprefixer": "10.4.19"
+    "tailwindcss": "3.4.6",
+    "typescript": "5.5.4"
   }
 }

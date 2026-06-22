@@ -12,6 +12,19 @@ class GraphState(TypedDict, total=False):
     imageUrl: Optional[str]
     normalizedText: str
     imageDesc: Optional[str]
+    riskLevel: str
+    riskReasons: List[str]
+    riskConfidence: float
+    inputDecision: str
+    inputReasons: List[str]
+    rawReflection: str
+    validationErrors: List[str]
+    reflectionValid: bool
+    repairAttempts: int
+    generationError: Optional[str]
+    fallbackReason: Optional[str]
+    outcome: str
+    responseMessage: Optional[str]
     task: Dict[str, Any]
     reflection: Dict[str, str]
     saltHex: str

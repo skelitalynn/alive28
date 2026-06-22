@@ -12,9 +12,19 @@ export type DailySnapshot = {
   alreadyCheckedIn: boolean;
 };
 
+export type CheckinOutcome =
+  | "accepted"
+  | "already_checked_in"
+  | "clarify"
+  | "rejected"
+  | "crisis_redirected";
+
 export type CheckinResult = {
-  log: DailyLog;
+  outcome: CheckinOutcome;
+  log: DailyLog | null;
   alreadyCheckedIn: boolean;
+  message?: string | null;
+  reflection?: DailyLog["reflection"] | null;
 };
 
 export type ProgressData = {

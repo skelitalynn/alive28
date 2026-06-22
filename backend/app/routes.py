@@ -277,6 +277,15 @@ async def checkin(payload: CheckinRequest, session: Session = Depends(get_sessio
     if start_date_key:
         state["startDateKey"] = start_date_key
     result = await _invoke_graph(state)
+    outcome = result.get("outcome")
+    if outcome in ("clarify", "rejected", "crisis_redirected"):
+        return {
+            "outcome": outcome,
+            "log": None,
+            "alreadyCheckedIn": False,
+            "message": result.get("responseMessage"),
+            "reflection": result.get("reflection"),
+        }
     log_id = result.get("logId")
     if not log_id:
         log = session.exec(
@@ -291,8 +300,11 @@ async def checkin(payload: CheckinRequest, session: Session = Depends(get_sessio
     if not log:
         _http_error(500, "INTERNAL", "failed to create log")
     return {
+        "outcome": "already_checked_in" if result.get("alreadyCheckedIn") else "accepted",
         "log": _log_to_response(log),
         "alreadyCheckedIn": bool(result.get("alreadyCheckedIn")),
+        "message": None,
+        "reflection": None,
     }
 
 

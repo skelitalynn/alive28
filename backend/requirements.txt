@@ -5,6 +5,7 @@ python-dotenv
 eth-utils
 eth-hash
 aiofiles
-spoon-ai-sdk
+spoon-ai-sdk==0.4.10
 pydantic
 pytest
+tzdata

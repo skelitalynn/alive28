@@ -8,7 +8,16 @@ from sqlalchemy.exc import IntegrityError
 from ..config import settings
 from ..services.tasks import get_task_by_day_index
 from ..services.crypto import normalize_text, sha256_hex, generate_salt_hex, compute_proof_hash
-from ..services.reflection import generate_reflection
+from ..services.reflection import (
+    fallback_reflection,
+    request_reflection_candidate,
+    validate_reflection,
+)
+from ..services.reflection_safety import (
+    CRISIS_REFLECTION,
+    assess_input_risk,
+    assess_input_quality,
+)
 from ..services.time import date_key_for_timezone, diff_days
 from ..services.report import generate_report_text
 from ..models import DailyLog, UserProgress
@@ -26,18 +35,13 @@ def _ensure_progress(db: Session, address: str, timezone: str, date_key: str, st
             milestones={"1": None, "2": None, "3": None},
         )
         db.add(progress)
-        db.commit()
-    changed = False
-    if not isinstance(progress.milestones, dict):
-        progress.milestones = {"1": None, "2": None, "3": None}
-        changed = True
+    milestones = progress.milestones if isinstance(progress.milestones, dict) else {}
+    normalized_milestones = dict(milestones)
     for key in ("1", "2", "3"):
-        if key not in progress.milestones:
-            progress.milestones[key] = None
-            changed = True
-    if changed:
+        normalized_milestones.setdefault(key, None)
+    if normalized_milestones != progress.milestones:
+        progress.milestones = normalized_milestones
         db.add(progress)
-        db.commit()
     return progress
 
 
@@ -78,11 +82,111 @@ async def user_input_node(state: Dict[str, Any]) -> Dict[str, Any]:
     return {"normalizedText": normalized, "imageDesc": image_desc}
 
 
+async def risk_classify_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    assessment = await assess_input_risk(state.get("normalizedText", ""))
+    return {
+        "riskLevel": assessment.level,
+        "riskReasons": assessment.reasons,
+        "riskConfidence": assessment.confidence,
+    }
+
+
+async def crisis_response_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "outcome": "crisis_redirected",
+        "reflection": CRISIS_REFLECTION,
+        "responseMessage": "当前输入已进入安全分流，不会生成打卡记录或链上 Proof。",
+    }
+
+
+async def input_quality_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    assessment = assess_input_quality(state.get("normalizedText", ""))
+    return {
+        "inputDecision": assessment.decision,
+        "inputReasons": assessment.reasons,
+        "responseMessage": assessment.message,
+    }
+
+
+async def clarification_response_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "outcome": "clarify",
+        "responseMessage": state.get("responseMessage"),
+    }
+
+
+async def rejected_input_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "outcome": "rejected",
+        "responseMessage": state.get("responseMessage"),
+    }
+
+
 async def reflection_node(state: Dict[str, Any]) -> Dict[str, Any]:
     task = state.get("task", {})
     normalized = state.get("normalizedText", "")
-    reflection = await generate_reflection(task, normalized)
-    return {"reflection": reflection}
+    try:
+        raw = await request_reflection_candidate(task, normalized)
+        return {"rawReflection": raw, "generationError": None}
+    except Exception as exc:
+        return {
+            "rawReflection": "",
+            "generationError": type(exc).__name__,
+            "fallbackReason": "model_unavailable",
+        }
+
+
+async def validate_reflection_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    if state.get("generationError"):
+        return {
+            "reflectionValid": False,
+            "validationErrors": ["model_unavailable"],
+        }
+
+    validation = validate_reflection(state.get("rawReflection", ""))
+    if validation.valid:
+        return {
+            "reflection": validation.reflection.model_dump(),
+            "reflectionValid": True,
+            "validationErrors": [],
+        }
+    return {
+        "reflectionValid": False,
+        "validationErrors": validation.errors,
+    }
+
+
+async def repair_reflection_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    repair_attempts = int(state.get("repairAttempts") or 0) + 1
+    try:
+        raw = await request_reflection_candidate(
+            state.get("task", {}),
+            state.get("normalizedText", ""),
+            invalid_output=state.get("rawReflection", ""),
+            validation_errors=state.get("validationErrors", []),
+        )
+        return {
+            "rawReflection": raw,
+            "repairAttempts": repair_attempts,
+            "generationError": None,
+        }
+    except Exception as exc:
+        return {
+            "rawReflection": "",
+            "repairAttempts": repair_attempts,
+            "generationError": type(exc).__name__,
+            "fallbackReason": "invalid_output",
+        }
+
+
+async def fallback_reflection_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    reason = state.get("fallbackReason")
+    if not reason:
+        reason = "model_unavailable" if state.get("generationError") else "invalid_output"
+    return {
+        "reflection": fallback_reflection(reason),
+        "fallbackReason": reason,
+    }
 
 
 async def proof_builder_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -142,13 +246,14 @@ async def progress_update_node(state: Dict[str, Any]) -> Dict[str, Any]:
     already_checked_in = False
 
     if flow == "checkin":
-        log = db.exec(
-            select(DailyLog).where(
-                DailyLog.address == address,
-                DailyLog.challenge_id == challenge_id,
-                DailyLog.date_key == date_key,
-            )
-        ).first()
+        with db.no_autoflush:
+            log = db.exec(
+                select(DailyLog).where(
+                    DailyLog.address == address,
+                    DailyLog.challenge_id == challenge_id,
+                    DailyLog.date_key == date_key,
+                )
+            ).first()
         already_checked_in = bool(log)
 
         if not log:
@@ -174,21 +279,6 @@ async def progress_update_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 proof_hash=proof_hash,
                 status="CREATED",
             )
-            db.add(log)
-            try:
-                db.commit()
-            except IntegrityError:
-                db.rollback()
-                log = db.exec(
-                    select(DailyLog).where(
-                        DailyLog.address == address,
-                        DailyLog.challenge_id == challenge_id,
-                        DailyLog.date_key == date_key,
-                    )
-                ).first()
-                already_checked_in = True
-
-        if log and not already_checked_in:
             if progress.last_date_key and progress.last_date_key != date_key:
                 delta = diff_days(progress.last_date_key, date_key)
                 if delta == 1:
@@ -201,8 +291,34 @@ async def progress_update_node(state: Dict[str, Any]) -> Dict[str, Any]:
             progress.last_date_key = date_key
             progress.last_day_index = log.day_index
             progress.updated_at = datetime.utcnow()
+            db.add(log)
             db.add(progress)
-            db.commit()
+            try:
+                db.commit()
+            except IntegrityError:
+                db.rollback()
+                log = db.exec(
+                    select(DailyLog).where(
+                        DailyLog.address == address,
+                        DailyLog.challenge_id == challenge_id,
+                        DailyLog.date_key == date_key,
+                    )
+                ).first()
+                progress = db.exec(
+                    select(UserProgress).where(UserProgress.address == address)
+                ).first()
+                if not log or not progress:
+                    raise
+                already_checked_in = True
+            except Exception:
+                db.rollback()
+                raise
+        else:
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
     else:
         log = db.exec(
             select(DailyLog).where(
@@ -211,6 +327,11 @@ async def progress_update_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 DailyLog.date_key == date_key,
             )
         ).first()
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
 
     logs = db.exec(
         select(DailyLog).where(
@@ -231,7 +352,7 @@ async def progress_update_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "dateKey": date_key,
         "startDateKey": progress.start_date_key,
         "milestones": milestones,
-        "alreadyCheckedIn": already_checked_in or today_checked_in,
+        "alreadyCheckedIn": already_checked_in,
     }
 
 

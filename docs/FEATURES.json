@@ -10,6 +10,16 @@
       ],
       "evidence": ".harness\\evidence\\F-001\\20260622T024943Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-002",
+      "behavior": "POST /checkin uses the SpoonOS safety graph: accepted input persists one compliant reflection, while clarify, rejected, and crisis outcomes create no proof and do not advance progress; invalid model output is repaired once then falls back safely.",
+      "state": "passing",
+      "verification": [
+        ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_reflection_safety.py backend\\app\\tests\\test_core.py -q"
+      ],
+      "evidence": ".harness\\evidence\\F-002\\20260622T044635Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }

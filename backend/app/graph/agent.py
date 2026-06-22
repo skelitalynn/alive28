@@ -4,7 +4,15 @@ from .state import GraphState
 from .nodes import (
     daily_prompt_node,
     user_input_node,
+    risk_classify_node,
+    crisis_response_node,
+    input_quality_node,
+    clarification_response_node,
+    rejected_input_node,
     reflection_node,
+    validate_reflection_node,
+    repair_reflection_node,
+    fallback_reflection_node,
     proof_builder_node,
     onchain_submit_node,
     tx_confirm_node,
@@ -20,7 +28,16 @@ def build_graph() -> StateGraph:
 
     graph.add_node("DailyPrompt", daily_prompt_node)
     graph.add_node("UserInput", user_input_node)
+    graph.add_node("RiskClassify", risk_classify_node)
+    graph.add_node("CrisisResponse", crisis_response_node)
+    graph.add_node("InputQuality", input_quality_node)
+    graph.add_node("ClarificationResponse", clarification_response_node)
+    graph.add_node("RejectedInput", rejected_input_node)
     graph.add_node("Reflection", reflection_node)
+    graph.add_node("ValidateReflection", validate_reflection_node)
+    graph.add_node("RepairReflection", repair_reflection_node)
+    graph.add_node("ValidateRepairedReflection", validate_reflection_node)
+    graph.add_node("FallbackReflection", fallback_reflection_node)
     graph.add_node("ProofBuilder", proof_builder_node)
     graph.add_node("OnchainSubmit", onchain_submit_node)
     graph.add_node("TxConfirm", tx_confirm_node)
@@ -53,8 +70,51 @@ def build_graph() -> StateGraph:
         "input": "UserInput",
     })
 
-    graph.add_edge("UserInput", "Reflection")
-    graph.add_edge("Reflection", "ProofBuilder")
+    graph.add_edge("UserInput", "RiskClassify")
+
+    def after_risk_classification(state):
+        return "crisis" if state.get("riskLevel") == "crisis" else "ordinary"
+
+    graph.add_conditional_edges("RiskClassify", after_risk_classification, {
+        "crisis": "CrisisResponse",
+        "ordinary": "InputQuality",
+    })
+    graph.add_edge("CrisisResponse", END)
+
+    def after_input_quality(state):
+        return state.get("inputDecision", "clarify")
+
+    graph.add_conditional_edges("InputQuality", after_input_quality, {
+        "accept": "Reflection",
+        "clarify": "ClarificationResponse",
+        "rejected": "RejectedInput",
+    })
+    graph.add_edge("ClarificationResponse", END)
+    graph.add_edge("RejectedInput", END)
+    graph.add_edge("Reflection", "ValidateReflection")
+
+    def after_reflection_validation(state):
+        if state.get("reflectionValid"):
+            return "valid"
+        if state.get("generationError"):
+            return "fallback"
+        return "repair"
+
+    graph.add_conditional_edges("ValidateReflection", after_reflection_validation, {
+        "valid": "ProofBuilder",
+        "repair": "RepairReflection",
+        "fallback": "FallbackReflection",
+    })
+    graph.add_edge("RepairReflection", "ValidateRepairedReflection")
+
+    def after_repair_validation(state):
+        return "valid" if state.get("reflectionValid") else "fallback"
+
+    graph.add_conditional_edges("ValidateRepairedReflection", after_repair_validation, {
+        "valid": "ProofBuilder",
+        "fallback": "FallbackReflection",
+    })
+    graph.add_edge("FallbackReflection", "ProofBuilder")
     graph.add_edge("ProofBuilder", "OnchainSubmit")
 
     def after_onchain(state):

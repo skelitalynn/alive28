@@ -152,8 +152,11 @@ async function checkin(params: { address: string; dayIndex: number; text: string
     })
   });
   return {
-    log: mapLog(res.log ?? res),
-    alreadyCheckedIn: res.alreadyCheckedIn ?? res.already_checked_in ?? false
+    outcome: res.outcome ?? "accepted",
+    log: res.log ? mapLog(res.log) : null,
+    alreadyCheckedIn: res.alreadyCheckedIn ?? res.already_checked_in ?? false,
+    message: res.message ?? null,
+    reflection: res.reflection ?? null
   };
 }
 
