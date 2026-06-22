@@ -322,6 +322,8 @@ async function getConfig(): Promise<{ demo_mode: boolean }> {
 }
 
 export const mockClient: ApiClient = {
+  authenticateWallet: async () => {},
+  clearWalletSession: () => {},
   getConfig,
   getHomeSnapshot,
   getDailySnapshot,
@@ -331,5 +333,8 @@ export const mockClient: ApiClient = {
   getProgress,
   composeFinal,
   mintMilestone,
-  getReport
+  getReport,
+  generateNft: async () => {
+    throw new Error("Mock NFT generation is not configured");
+  }
 };

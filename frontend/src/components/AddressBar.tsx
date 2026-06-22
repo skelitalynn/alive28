@@ -3,18 +3,19 @@
 import { useAddress } from "./addressContext";
 import WalletConnect from "./WalletConnect";
 import { useAccount } from "wagmi";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../lib/api";
 
 export default function AddressBar() {
-  const { address, input, setInput, applyInputAsAddress, randomAddress, resetData, inputRef, setAddress } = useAddress();
+  const { address, input, setInput, applyInputAsAddress, randomAddress, inputRef } = useAddress();
   const { address: wagmiAddress, isConnected } = useAccount();
+  const [demoMode, setDemoMode] = useState<boolean | null>(null);
 
-  // 同步钱包地址到 addressContext（标记为钱包来源）
   useEffect(() => {
-    if (isConnected && wagmiAddress) {
-      setAddress(wagmiAddress, "wallet");
-    }
-  }, [isConnected, wagmiAddress, setAddress]);
+    api.getConfig()
+      .then((config) => setDemoMode(config.demo_mode))
+      .catch(() => setDemoMode(false));
+  }, []);
 
   // 如果已连接钱包，显示钱包信息
   if (isConnected && wagmiAddress) {
@@ -41,28 +42,32 @@ export default function AddressBar() {
           <div className="flex flex-col sm:flex-row gap-2">
             <WalletConnect />
           </div>
-          <div className="text-xs text-pink-600/70 text-center">或</div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              ref={inputRef}
-              className="px-4 py-2 rounded-xl border border-pink-100 bg-white w-full sm:w-80 text-sm text-pink-900 placeholder:text-pink-400/60 focus:outline-none focus:ring-2 focus:ring-pink-200 transition-all"
-              placeholder="输入你的标识..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-            />
-            <button
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-200 to-rose-200 text-pink-700 text-sm font-medium hover:from-pink-300 hover:to-rose-300 transition-all shadow-sm btn-press"
-              onClick={applyInputAsAddress}
-            >
-              开始
-            </button>
-            <button 
-              className="px-4 py-2 rounded-xl border border-pink-100 bg-white text-pink-600 text-sm hover:bg-pink-50/50 transition-all btn-press" 
-              onClick={randomAddress}
-            >
-              快速开始
-            </button>
-          </div>
+          {demoMode && (
+            <>
+              <div className="text-xs text-pink-600/70 text-center">或使用 Demo 身份</div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  ref={inputRef}
+                  className="px-4 py-2 rounded-xl border border-pink-100 bg-white w-full sm:w-80 text-sm text-pink-900 placeholder:text-pink-400/60 focus:outline-none focus:ring-2 focus:ring-pink-200 transition-all"
+                  placeholder="输入你的标识..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                />
+                <button
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-200 to-rose-200 text-pink-700 text-sm font-medium hover:from-pink-300 hover:to-rose-300 transition-all shadow-sm btn-press"
+                  onClick={applyInputAsAddress}
+                >
+                  开始
+                </button>
+                <button
+                  className="px-4 py-2 rounded-xl border border-pink-100 bg-white text-pink-600 text-sm hover:bg-pink-50/50 transition-all btn-press"
+                  onClick={randomAddress}
+                >
+                  快速开始
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

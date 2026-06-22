@@ -4,7 +4,7 @@
 
 ## 当前目标
 
-`F-003 Recoverable Checkin Execution` 已完成实现与本地验证。下一阶段进入钱包身份认证和链上 receipt/event 验证。
+`F-004 Wallet Authentication and Trusted Receipt` 已完成实现与本地验证。下一阶段进入 Proof 上链批准与 revoke/supersede 补偿语义。
 
 ## 最近完成
 
@@ -24,6 +24,11 @@
 - 同一未完成 `checkinId` 被不同输入复用时返回 `409 CHECKIN_ID_CONFLICT`。
 - Checkin 响应包含 Prompt/模型版本、模型调用次数、节点耗时、节点尝试次数、修复和 fallback 信息。
 - 完成后仅保留紧凑 Checkpoint，不保存日记原文、salt、输入哈希或 Proof。
+- 非 Demo 模式使用一次性 nonce 和 EIP-191 钱包签名建立地址绑定 session。
+- 地址相关 API、Reflection 和 NFT 图片生成接口均要求有效 session；Demo 手动地址继续保留。
+- 前端连接钱包后先签名认证，再向页面暴露地址；token 仅保存在 `sessionStorage`。
+- Proof、Day/Final NFT 和 Milestone 确认会通过配置 RPC 核对 chain、receipt、sender、contract 和 event。
+- 伪造地址、重复 nonce、伪造 txHash 或错误事件不会改变本地状态。
 
 ## 当前实现状态
 
@@ -41,12 +46,12 @@
 
 ### P0：安全与可信性
 
-- 手动地址和请求中的地址没有签名认证，可冒用其他地址。
-- `/tx/confirm`、`/nft/confirm` 和 `/milestone/mint` 不验证链上 receipt 或 event。
 - 日记原文明文保存，并发送给外部 LLM 或图片生成 adapter。
 - Pollinations 调用把用户内容放入 URL Prompt。
 - 危机分流模板尚未经过专业机构审核，也尚未根据用户地区动态提供资源。
 - 风险规则和语义禁区已有回归测试，但仍需要更完整的离线安全评测集。
+- ProofRegistry 仍是 permissionless 提交，尚未要求后端批准签名。
+- 已确认的链上 Proof 尚未实现 revoke/supersede 补偿记录。
 
 ### P1：工程可靠性
 
@@ -62,18 +67,18 @@
 2026-06-22：
 
 - SpoonOS SDK 锁定为 `spoon-ai-sdk==0.4.10`。
-- 后端测试：19 passed。
+- 后端测试：25 passed。
 - 合约测试：5 passed。
 - Next.js 生产构建通过。
 - Harness 文档路由检查通过。
-- `F-002` 与 `F-003` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
+- `F-002`、`F-003` 与 `F-004` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
 
 ## 下一步建议
 
-1. 实现钱包 nonce 签名认证，禁止仅凭地址访问或修改状态。
-2. 后端验证 receipt、sender、contract 和 event 后再确认交易。
-3. 定义 Proof 的批准、撤销和替代语义。
-4. 为 Checkpoint 增加过期、用户删除和数据迁移策略。
+1. 为通过安全 Graph 的 Proof 引入短期、单次上链批准。
+2. 定义 Proof 的 revoke、supersede 和不可变审计记录。
+3. 让被撤销 Proof 不再参与里程碑资格。
+4. 为 Checkpoint、challenge 和 session 增加过期清理与数据迁移。
 5. 后续按 Phase 4–5 处理隐私、长期记忆、历史前端 Agent 清理、迁移和 CI。
 
 实际执行顺序由 `docs/FEATURES.json` 中唯一的 `active` 功能项决定。

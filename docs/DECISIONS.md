@@ -19,10 +19,11 @@
 | 2026-06-22 | 长期记忆默认不保存日记原文 | 日记高度敏感；仅在明确授权后保存可查看、可删除的结构化偏好 | Accepted |
 | 2026-06-22 | SpoonOS Graph Checkpoint 使用项目 SQLite adapter | SpoonOS 0.4.10 Graph 默认 Checkpointer 仅内存保存；项目已有 SQLite，使用同一数据库可在进程重启后恢复且无需新增基础设施 | Accepted |
 | 2026-06-22 | 数据库副作用失败后由相同 `checkinId` 显式恢复 | 数据库写入不能后台盲目重试；稳定幂等键让调用方可安全重放，并能检测同 ID 不同请求的冲突 | Accepted |
+| 2026-06-22 | 正式身份采用一次性 nonce + EIP-191 签名 + 服务端 session | 当前需求只需要证明地址控制权；该方案接口较小，nonce 单次消费，session token 只保存哈希，后续可迁移到 SIWE | Accepted |
+| 2026-06-22 | 客户端 txHash 只作为链查询键，不作为成功证据 | 后端必须从配置 RPC 核对 chain、receipt status、sender、contract 和预期 event 后才更新本地状态 | Accepted |
 
 ## 待决定
 
-- 正式身份是否采用 SIWE，还是使用项目自定义 nonce 签名。
 - 日记是否服务端加密，以及密钥和删除权由谁控制。
 - 危机输入是仅显示地区化资源，还是需要人工升级能力。
 - 是否保留可转让 Day NFT；原始产品叙事曾使用 SBT，但当前合约允许转让。

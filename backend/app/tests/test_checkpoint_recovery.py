@@ -3,6 +3,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session, create_engine, select
 
 from backend.app.database import get_session
+from backend.app.config import settings
 from backend.app.main import app
 from backend.app.models import DailyLog, GraphCheckpoint, UserProgress
 
@@ -10,6 +11,7 @@ from backend.app.models import DailyLog, GraphCheckpoint, UserProgress
 def test_retry_resumes_from_persistent_checkpoint_without_repeating_reflection(
     monkeypatch,
 ):
+    monkeypatch.setattr(settings, "demo_mode", True)
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -94,6 +96,7 @@ def test_retry_resumes_from_persistent_checkpoint_without_repeating_reflection(
 
 
 def test_checkin_reports_transient_model_attempts(monkeypatch):
+    monkeypatch.setattr(settings, "demo_mode", True)
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -146,6 +149,7 @@ def test_checkin_reports_transient_model_attempts(monkeypatch):
 
 
 def test_incomplete_checkin_id_cannot_resume_with_different_input(monkeypatch):
+    monkeypatch.setattr(settings, "demo_mode", True)
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},

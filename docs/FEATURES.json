@@ -30,6 +30,16 @@
       ],
       "evidence": ".harness\\evidence\\F-003\\20260622T074931Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-004",
+      "behavior": "Non-demo API access requires a one-time wallet signature session bound to one address, and tx/NFT/milestone confirmations mutate local state only after RPC verification of receipt status, sender, configured contract, chain, and expected event data.",
+      "state": "passing",
+      "verification": [
+        ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_wallet_auth_and_receipts.py backend\\app\\tests\\test_checkpoint_recovery.py backend\\app\\tests\\test_reflection_safety.py backend\\app\\tests\\test_core.py -q"
+      ],
+      "evidence": ".harness\\evidence\\F-004\\20260622T082351Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }

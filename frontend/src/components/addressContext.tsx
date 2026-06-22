@@ -7,6 +7,7 @@ import { resetStore, STORE_EVENT } from "../lib/store/localStore";
 
 const LAST_ADDR_KEY = "alive28:last_addr";
 const ADDR_SOURCE_KEY = "alive28:addr_source"; // "wallet" | "manual" — 仅 manual 在刷新后恢复
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
 
 type AddressContextValue = {
   address: string;
@@ -35,14 +36,24 @@ export function AddressProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return;
     const last = window.localStorage.getItem(LAST_ADDR_KEY);
     const source = window.localStorage.getItem(ADDR_SOURCE_KEY);
-    // 仅当来源是「手动输入」时才恢复；钱包来源或旧数据（无 source）不恢复，避免断开后重启仍看到数据
-    if (last && source === "manual") {
-      setAddressState(last.toLowerCase());
-    } else if (last) {
+    const clearStoredAddress = () => {
       window.localStorage.removeItem(LAST_ADDR_KEY);
       window.localStorage.removeItem(ADDR_SOURCE_KEY);
+    };
+    if (!last || source !== "manual") {
+      if (last) clearStoredAddress();
+      setReady(true);
+      return;
     }
-    setReady(true);
+
+    fetch(`${API_BASE}/health`, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((config) => {
+        if (config.demo_mode) setAddressState(last.toLowerCase());
+        else clearStoredAddress();
+      })
+      .catch(clearStoredAddress)
+      .finally(() => setReady(true));
   }, []);
 
   useEffect(() => {

@@ -57,3 +57,22 @@ class GraphCheckpoint(SQLModel, table=True):
     config_data: Dict[str, Any] = Field(sa_column=Column(JSON))
     checkpoint_metadata: Dict[str, Any] = Field(sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+
+class WalletChallenge(SQLModel, table=True):
+    id: str = Field(primary_key=True, max_length=36)
+    address: str = Field(index=True, max_length=42)
+    nonce: str = Field(index=True, unique=True, max_length=64)
+    message: str
+    expires_at: datetime = Field(index=True)
+    used_at: Optional[datetime] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class WalletSession(SQLModel, table=True):
+    id: str = Field(primary_key=True, max_length=36)
+    address: str = Field(index=True, max_length=42)
+    token_hash: str = Field(index=True, unique=True, max_length=64)
+    expires_at: datetime = Field(index=True)
+    revoked_at: Optional[datetime] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -23,7 +23,7 @@ python -m venv .venv
 Copy-Item backend\.env.example backend\.env
 ```
 
-编辑 `backend/.env`，至少配置可用的 `DEEPSEEK_API_KEY`。启动：
+编辑 `backend/.env`。非 Demo 模式至少配置可用的 `DEEPSEEK_API_KEY`、`RPC_URL` 和已部署合约地址。启动：
 
 ```powershell
 Set-Location backend
@@ -49,6 +49,13 @@ GET http://127.0.0.1:8000/health
 | `DATABASE_URL` | SQLModel 数据库 | `sqlite:///./alive.db` |
 | `DEFAULT_TIMEZONE` | 默认时区 | `Asia/Shanghai` |
 | `CHALLENGE_ID` | 当前挑战 ID | `1` |
+| `CHAIN_ID` | 后端允许确认的链 | `11155111` |
+| `RPC_URL` | receipt/event 查询节点 | 必须配置 |
+| `PROOF_REGISTRY_ADDRESS` | ProofRegistry 合约 | 部署地址 |
+| `RESTART_BADGE_ADDRESS` | Day/Final NFT 合约 | 部署地址 |
+| `MILESTONE_NFT_ADDRESS` | Milestone NFT 合约 | 部署地址 |
+| `AUTH_NONCE_TTL_SECONDS` | 签名 challenge 有效期 | `300` |
+| `AUTH_SESSION_TTL_SECONDS` | 钱包 session 有效期 | `86400` |
 | `DEFAULT_LLM_PROVIDER` | SpoonOS 默认模型供应商 | `deepseek` |
 | `DEFAULT_MODEL` | 默认模型 | `deepseek-chat` |
 | `DEEPSEEK_API_KEY` | DeepSeek 密钥 | 必须替换示例值 |
@@ -85,12 +92,12 @@ npm --prefix frontend run dev
 ## 本地 MVP 路径
 
 1. 打开 `http://localhost:3000`。
-2. 连接钱包，或使用页面提供的手动/随机地址。
+2. 非 Demo 模式连接钱包并签署登录 challenge；Demo 模式可使用手动/随机地址。
 3. 进入 `/daily/1`。
 4. 输入感受并点击“生成反馈”。
 5. 打开 `/progress` 和 `/report` 检查数据。
 
-手动地址只是 Demo 身份，不具备认证能力。
+手动地址只在 `DEMO_MODE=true` 时展示，不具备认证能力。
 
 ## 合约
 

@@ -226,6 +226,7 @@ async def tx_confirm_node(state: Dict[str, Any]) -> Dict[str, Any]:
     tx_hash = state.get("txHash")
     chain_id = state.get("chainId")
     contract_address = state.get("contractAddress")
+    block_number = state.get("blockNumber")
     if not log_id:
         return {"txStatus": "CREATED"}
 
@@ -234,6 +235,7 @@ async def tx_confirm_node(state: Dict[str, Any]) -> Dict[str, Any]:
         log.tx_hash = tx_hash
         log.chain_id = chain_id
         log.contract_address = contract_address
+        log.block_number = block_number
         log.status = "SUBMITTED"
         db.add(log)
         db.commit()

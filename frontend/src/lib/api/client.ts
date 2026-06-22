@@ -68,7 +68,19 @@ export type ReportData = {
 
 export type ConfigData = { demo_mode: boolean };
 
+export type GenerateNftResult = {
+  success: boolean;
+  image: string;
+  dayIndex: number;
+  message: string;
+};
+
 export interface ApiClient {
+  authenticateWallet: (
+    address: string,
+    signMessage?: (message: string) => Promise<string>
+  ) => Promise<void>;
+  clearWalletSession: () => void;
   getConfig: () => Promise<ConfigData>;
   getHomeSnapshot: (address?: string | null) => Promise<HomeSnapshot>;
   getDailySnapshot: (address: string, dayIndex: number) => Promise<DailySnapshot>;
@@ -79,4 +91,11 @@ export interface ApiClient {
   composeFinal: (params: { address: string }) => Promise<User>;
   mintMilestone: (params: { address: string; milestoneId: number; txHash?: string }) => Promise<User>;
   getReport: (params: { address: string; range: "week" | "final" }) => Promise<ReportData>;
+  generateNft: (params: {
+    dayIndex: number;
+    taskTitle: string;
+    userText: string;
+    reflectionNote: string;
+    reflectionNext: string;
+  }) => Promise<GenerateNftResult>;
 }

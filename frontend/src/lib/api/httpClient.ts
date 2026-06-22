@@ -9,6 +9,9 @@ const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111");
 const PROOF_REGISTRY = process.env.NEXT_PUBLIC_PROOF_REGISTRY || "0x0000000000000000000000000000000000000000";
 const BADGE_NFT = process.env.NEXT_PUBLIC_BADGE_NFT || "0x0000000000000000000000000000000000000000";
 const MILESTONE_NFT = process.env.NEXT_PUBLIC_MILESTONE_NFT || BADGE_NFT;
+const AUTH_TOKEN_KEY = "alive28:auth_token";
+const AUTH_ADDRESS_KEY = "alive28:auth_address";
+const AUTH_EXPIRES_KEY = "alive28:auth_expires";
 
 const ProofRegistryAbi = [
   {
@@ -41,10 +44,12 @@ const RestartBadgeSbtAbi = [
 ] as const;
 
 async function fetchJson<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getStoredAuthToken();
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     },
     cache: "no-store"
@@ -52,6 +57,7 @@ async function fetchJson<T>(path: string, options: RequestInit = {}): Promise<T>
 
   const text = await res.text();
   if (!res.ok) {
+    if (res.status === 401) clearWalletSession();
     let msg = res.statusText;
     try {
       const data = text ? JSON.parse(text) : {};
@@ -65,9 +71,73 @@ async function fetchJson<T>(path: string, options: RequestInit = {}): Promise<T>
   return JSON.parse(text) as T;
 }
 
+function getStoredAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const token = window.sessionStorage.getItem(AUTH_TOKEN_KEY);
+  const expiresAt = window.sessionStorage.getItem(AUTH_EXPIRES_KEY);
+  if (!token || !expiresAt || Date.parse(expiresAt) <= Date.now()) {
+    clearWalletSession();
+    return null;
+  }
+  return token;
+}
+
+function clearWalletSession() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  window.sessionStorage.removeItem(AUTH_ADDRESS_KEY);
+  window.sessionStorage.removeItem(AUTH_EXPIRES_KEY);
+}
+
 function getEthereum() {
   if (typeof window === "undefined") return null;
   return (window as any).ethereum || null;
+}
+
+async function authenticateWallet(
+  address: string,
+  signMessage?: (message: string) => Promise<string>
+): Promise<void> {
+  if (typeof window === "undefined") throw new Error("钱包认证只能在浏览器中执行");
+  const normalized = address.toLowerCase();
+  const existingAddress = window.sessionStorage.getItem(AUTH_ADDRESS_KEY);
+  if (existingAddress === normalized && getStoredAuthToken()) return;
+
+  clearWalletSession();
+  const challenge = await fetchJson<{ message: string; expiresAt: string }>(
+    "/auth/nonce",
+    {
+      method: "POST",
+      body: JSON.stringify({ address: normalized })
+    }
+  );
+  let signature: string;
+  if (signMessage) {
+    signature = await signMessage(challenge.message);
+  } else {
+    const ethereum = getEthereum();
+    if (!ethereum) throw new Error("未检测到钱包（window.ethereum）");
+    const walletAddress = (await getWalletAddress(ethereum)).toLowerCase();
+    if (walletAddress !== normalized) throw new Error("当前钱包地址与连接地址不一致");
+    signature = await ethereum.request({
+      method: "personal_sign",
+      params: [challenge.message, normalized]
+    });
+  }
+  const verified = await fetchJson<{
+    token: string;
+    address: string;
+    expiresAt: string;
+  }>("/auth/verify", {
+    method: "POST",
+    body: JSON.stringify({
+      address: normalized,
+      signature
+    })
+  });
+  window.sessionStorage.setItem(AUTH_TOKEN_KEY, verified.token);
+  window.sessionStorage.setItem(AUTH_ADDRESS_KEY, verified.address.toLowerCase());
+  window.sessionStorage.setItem(AUTH_EXPIRES_KEY, verified.expiresAt);
 }
 
 async function ensureChain(ethereum: any) {
@@ -318,7 +388,27 @@ async function getConfig(): Promise<{ demo_mode: boolean }> {
   return { demo_mode: res.demo_mode ?? false };
 }
 
+async function generateNft(params: {
+  dayIndex: number;
+  taskTitle: string;
+  userText: string;
+  reflectionNote: string;
+  reflectionNext: string;
+}) {
+  return fetchJson<{
+    success: boolean;
+    image: string;
+    dayIndex: number;
+    message: string;
+  }>("/ai/generate-nft", {
+    method: "POST",
+    body: JSON.stringify(params)
+  });
+}
+
 export const httpClient: ApiClient = {
+  authenticateWallet,
+  clearWalletSession,
   getConfig,
   getHomeSnapshot,
   getDailySnapshot,
@@ -328,5 +418,6 @@ export const httpClient: ApiClient = {
   getProgress,
   composeFinal,
   mintMilestone,
-  getReport
+  getReport,
+  generateNft
 };

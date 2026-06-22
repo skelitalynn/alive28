@@ -40,9 +40,11 @@ Wallet ---------- Solidity contracts
 - `backend/app/services/reflection_safety.py`：输入风险规则、SpoonOS 结构化分类、Prompt 注入和输入质量判断。
 - `backend/app/services/reflection.py`：Reflection Prompt、严格 Schema、语义校验、受限重试、修复和 fallback。
 - `backend/app/services/checkpoint.py`：兼容 SpoonOS Graph 接口的 SQLite 持久化 Checkpointer。
+- `backend/app/services/auth.py`：一次性钱包 challenge、EIP-191 签名恢复和服务端 session。
+- `backend/app/services/chain.py`：RPC receipt、sender、contract、chain 和 event 验证。
 - `backend/app/services/report.py`：周报与结营报告生成。
 - `backend/app/services/nft_image.py`：Pollinations、Gemini 和 SVG fallback。
-- `backend/app/models.py`：`UserProgress`、`DailyLog` 与 `GraphCheckpoint`。
+- `backend/app/models.py`：业务记录、Graph Checkpoint、钱包 challenge 与 session。
 - `backend/app/data/tasks.json`：28 天任务内容。
 
 Graph 是确定性工作流。LLM 只参与 Reflection 和报告文本，不控制数据库查询、Proof 计算或里程碑规则。
@@ -66,6 +68,25 @@ Graph 是确定性工作流。LLM 只参与 Reflection 和报告文本，不控�
 - `MilestoneNFT.sol`：用户为自己铸造指定 token ID 与 URI。
 
 后端数据库和链上状态目前是两套状态来源，后端通过客户端上报的 `txHash` 更新本地记录。
+
+### 钱包身份
+
+非 Demo 模式的地址相关 API 使用以下流程：
+
+```text
+POST /auth/nonce(address)
+  -> 一次性 challenge（5 分钟）
+Wallet personal_sign(message)
+POST /auth/verify(address, signature)
+  -> 恢复签名地址
+  -> challenge 标记已使用
+  -> 返回短期 Bearer session
+Address API
+  -> session 有效且绑定地址一致
+```
+
+服务端只保存 session token 的 SHA-256，不保存明文 token。前端 token 保存在
+`sessionStorage`，钱包断开或 API 返回 401 时清除。Demo 模式仍允许手动地址，但该地址不代表钱包所有权。
 
 ## 主要调用链
 
@@ -115,10 +136,14 @@ GET /report
 ```text
 Browser sends transaction
   -> client submits txHash to backend
+  -> backend queries configured RPC
+  -> verify configured chain and successful receipt
+  -> verify transaction sender and target contract
+  -> verify ProofSubmitted / DayMinted / FinalMinted / Transfer event
   -> backend writes submitted/minted state
 ```
 
-当前后端没有查询链上 receipt、sender、contract 或 event，因此该确认链路不能作为可信证据。
+客户端提交的 `chainId`、`contractAddress` 和 `address` 均为不可信输入。RPC 不可用、交易回滚、发送者不匹配、目标合约错误或事件内容错误时，本地状态不改变。
 
 ## 数据与隐私
 
@@ -135,7 +160,7 @@ Browser sends transaction
 - 日记以明文保存在 SQLite。
 - LLM 与图片生成 adapter 会接收用户内容。
 - Pollinations Prompt 被编码进 URL。
-- 仅凭地址即可查询或修改关联数据，没有签名认证。
+- Session token 当前由浏览器 `sessionStorage` 保存，仍需要配合生产 HTTPS、严格 CORS 和 XSS 防护。
 
 涉及日记、身份或外部模型的修改必须先阅读 `docs/PROGRESS.md` 的安全阻塞项。
 

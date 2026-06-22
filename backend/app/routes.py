@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlmodel import Session, select
 from datetime import datetime
 import os
@@ -13,6 +13,10 @@ from .database import get_session
 from .config import settings
 from .schemas import (
     HealthResponse,
+    AuthNonceRequest,
+    AuthNonceResponse,
+    AuthVerifyRequest,
+    AuthVerifyResponse,
     DailyPromptResponse,
     UserResponse,
     UserUpdateRequest,
@@ -41,6 +45,17 @@ from .graph.agent import create_agent
 from .services.reflection import PROMPT_VERSION, generate_reflection
 from .services.checkpoint import SQLiteGraphCheckpointer
 from .services.nft_image import generate_nft_image
+from .services.auth import (
+    AuthenticationError,
+    authenticate_bearer_token,
+    create_wallet_challenge,
+    verify_wallet_signature,
+)
+from .services.chain import (
+    ChainVerificationError,
+    ChainVerifier,
+    get_chain_verifier,
+)
 from spoon_ai.graph.types import Command, StateSnapshot
 
 router = APIRouter()
@@ -58,6 +73,40 @@ def _require_address(addr: str) -> str:
     if not addr or not addr.startswith("0x") or len(addr) != 42:
         _http_error(400, "INVALID_ARGUMENT", "invalid address")
     return _lower_address(addr)
+
+
+def _authorize_address(
+    address: str,
+    authorization: str | None,
+    session: Session,
+) -> None:
+    if settings.demo_mode:
+        return
+    try:
+        authenticated_address = authenticate_bearer_token(
+            session,
+            authorization,
+        )
+    except AuthenticationError as exc:
+        _http_error(401, "AUTH_REQUIRED", str(exc))
+    if authenticated_address != address:
+        _http_error(
+            403,
+            "ADDRESS_FORBIDDEN",
+            "wallet session is bound to a different address",
+        )
+
+
+def _authorize_session(
+    authorization: str | None,
+    session: Session,
+) -> Optional[str]:
+    if settings.demo_mode:
+        return None
+    try:
+        return authenticate_bearer_token(session, authorization)
+    except AuthenticationError as exc:
+        _http_error(401, "AUTH_REQUIRED", str(exc))
 
 
 def _default_milestones() -> Dict[str, Optional[str]]:
@@ -271,6 +320,40 @@ def health():
     return {"status": "ok", "version": settings.version, "demo_mode": settings.demo_mode}
 
 
+@router.post("/auth/nonce", response_model=AuthNonceResponse)
+def auth_nonce(
+    payload: AuthNonceRequest,
+    session: Session = Depends(get_session),
+):
+    address = _require_address(payload.address)
+    challenge = create_wallet_challenge(session, address)
+    return {
+        "message": challenge.message,
+        "expiresAt": challenge.expires_at.isoformat() + "Z",
+    }
+
+
+@router.post("/auth/verify", response_model=AuthVerifyResponse)
+def auth_verify(
+    payload: AuthVerifyRequest,
+    session: Session = Depends(get_session),
+):
+    address = _require_address(payload.address)
+    try:
+        token, wallet_session = verify_wallet_signature(
+            session,
+            address,
+            payload.signature,
+        )
+    except AuthenticationError as exc:
+        _http_error(401, "INVALID_SIGNATURE", str(exc))
+    return {
+        "token": token,
+        "address": address,
+        "expiresAt": wallet_session.expires_at.isoformat() + "Z",
+    }
+
+
 @router.get("/dailyPrompt", response_model=DailyPromptResponse)
 def daily_prompt(dayIndex: int, timezone: str = settings.default_timezone):
     if dayIndex < 1 or dayIndex > 28:
@@ -286,8 +369,13 @@ def daily_prompt(dayIndex: int, timezone: str = settings.default_timezone):
 
 
 @router.get("/user", response_model=UserResponse)
-def get_user(address: str, session: Session = Depends(get_session)):
+def get_user(
+    address: str,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
     address = _require_address(address)
+    _authorize_address(address, authorization, session)
     user = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
     if not user:
         _http_error(404, "NOT_FOUND", "user not found")
@@ -303,8 +391,13 @@ def get_user(address: str, session: Session = Depends(get_session)):
 
 
 @router.post("/user", response_model=dict)
-def update_user(payload: UserUpdateRequest, session: Session = Depends(get_session)):
+def update_user(
+    payload: UserUpdateRequest,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
     address = _require_address(payload.address)
+    _authorize_address(address, authorization, session)
     user = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
     if not user:
         date_key = date_key_for_timezone(payload.timezone)
@@ -328,8 +421,13 @@ def update_user(payload: UserUpdateRequest, session: Session = Depends(get_sessi
 
 
 @router.get("/homeSnapshot", response_model=HomeSnapshotResponse)
-def home_snapshot(address: str, session: Session = Depends(get_session)):
+def home_snapshot(
+    address: str,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
     address = _require_address(address)
+    _authorize_address(address, authorization, session)
     progress = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
     timezone = progress.timezone if progress else settings.default_timezone
     if settings.demo_mode:
@@ -354,8 +452,14 @@ def home_snapshot(address: str, session: Session = Depends(get_session)):
 
 
 @router.get("/dailySnapshot", response_model=DailySnapshotResponse)
-def daily_snapshot(address: str, dayIndex: int, session: Session = Depends(get_session)):
+def daily_snapshot(
+    address: str,
+    dayIndex: int,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
     address = _require_address(address)
+    _authorize_address(address, authorization, session)
     if dayIndex < 1 or dayIndex > 28:
         _http_error(400, "INVALID_ARGUMENT", "dayIndex must be between 1 and 28")
     progress = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
@@ -387,8 +491,13 @@ def daily_snapshot(address: str, dayIndex: int, session: Session = Depends(get_s
 
 
 @router.post("/checkin", response_model=CheckinResponse)
-async def checkin(payload: CheckinRequest, session: Session = Depends(get_session)):
+async def checkin(
+    payload: CheckinRequest,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
     address = _require_address(payload.address)
+    _authorize_address(address, authorization, session)
     if payload.dayIndex < 1 or payload.dayIndex > 28:
         _http_error(400, "INVALID_ARGUMENT", "dayIndex must be between 1 and 28")
     if payload.text is None and not payload.imageUrl:
@@ -517,13 +626,34 @@ async def checkin(payload: CheckinRequest, session: Session = Depends(get_sessio
 
 
 @router.post("/tx/confirm", response_model=TxConfirmResponse)
-async def tx_confirm(payload: TxConfirmRequest, session: Session = Depends(get_session)):
+async def tx_confirm(
+    payload: TxConfirmRequest,
+    authorization: Optional[str] = Header(default=None),
+    verifier: ChainVerifier = Depends(get_chain_verifier),
+    session: Session = Depends(get_session),
+):
     address = _require_address(payload.address)
+    _authorize_address(address, authorization, session)
     log = session.exec(select(DailyLog).where(DailyLog.id == payload.logId)).first()
     if not log:
         _http_error(404, "NOT_FOUND", "logId not found")
+    if log.address != address:
+        _http_error(403, "ADDRESS_FORBIDDEN", "log belongs to another address")
     if log.tx_hash:
         return {"ok": True}
+    verified = None
+    if not settings.demo_mode:
+        try:
+            verified = verifier.verify_proof_submission(
+                tx_hash=payload.txHash,
+                address=address,
+                chain_id=payload.chainId,
+                contract_address=payload.contractAddress,
+                day_index=log.day_index,
+                proof_hash=log.proof_hash,
+            )
+        except ChainVerificationError as exc:
+            _http_error(400, "INVALID_CHAIN_RECEIPT", str(exc))
     state = {
         "db": session,
         "flow": "tx_confirm",
@@ -532,14 +662,21 @@ async def tx_confirm(payload: TxConfirmRequest, session: Session = Depends(get_s
         "txHash": payload.txHash,
         "chainId": payload.chainId,
         "contractAddress": payload.contractAddress,
+        "blockNumber": verified.block_number if verified else None,
     }
     await _invoke_graph(state)
     return {"ok": True}
 
 
 @router.post("/nft/confirm", response_model=NftConfirmResponse)
-def nft_confirm(payload: NftConfirmRequest, session: Session = Depends(get_session)):
+def nft_confirm(
+    payload: NftConfirmRequest,
+    authorization: Optional[str] = Header(default=None),
+    verifier: ChainVerifier = Depends(get_chain_verifier),
+    session: Session = Depends(get_session),
+):
     address = _require_address(payload.address)
+    _authorize_address(address, authorization, session)
     if payload.type == "DAY":
         if payload.dayIndex is None:
             _http_error(400, "INVALID_ARGUMENT", "dayIndex required for type=DAY")
@@ -554,6 +691,17 @@ def nft_confirm(payload: NftConfirmRequest, session: Session = Depends(get_sessi
             _http_error(404, "NOT_FOUND", "log not found for dayIndex")
         if log.day_nft_tx_hash:
             return {"ok": True}
+        if not settings.demo_mode:
+            try:
+                verifier.verify_day_mint(
+                    tx_hash=payload.txHash,
+                    address=address,
+                    chain_id=payload.chainId,
+                    contract_address=payload.contractAddress,
+                    day_index=payload.dayIndex,
+                )
+            except ChainVerificationError as exc:
+                _http_error(400, "INVALID_CHAIN_RECEIPT", str(exc))
         log.day_nft_tx_hash = payload.txHash
         session.add(log)
         progress = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
@@ -568,6 +716,16 @@ def nft_confirm(payload: NftConfirmRequest, session: Session = Depends(get_sessi
             _http_error(404, "NOT_FOUND", "user not found")
         if progress.final_nft_tx_hash:
             return {"ok": True}
+        if not settings.demo_mode:
+            try:
+                verifier.verify_final_mint(
+                    tx_hash=payload.txHash,
+                    address=address,
+                    chain_id=payload.chainId,
+                    contract_address=payload.contractAddress,
+                )
+            except ChainVerificationError as exc:
+                _http_error(400, "INVALID_CHAIN_RECEIPT", str(exc))
         progress.final_nft_tx_hash = payload.txHash
         progress.final_minted = True
         progress.updated_at = datetime.utcnow()
@@ -579,8 +737,14 @@ def nft_confirm(payload: NftConfirmRequest, session: Session = Depends(get_sessi
 
 
 @router.post("/milestone/mint", response_model=MilestoneMintResponse)
-def milestone_mint(payload: MilestoneMintRequest, session: Session = Depends(get_session)):
+def milestone_mint(
+    payload: MilestoneMintRequest,
+    authorization: Optional[str] = Header(default=None),
+    verifier: ChainVerifier = Depends(get_chain_verifier),
+    session: Session = Depends(get_session),
+):
     address = _require_address(payload.address)
+    _authorize_address(address, authorization, session)
     milestone_id = payload.milestoneId
     if milestone_id not in (1, 2, 3):
         _http_error(400, "INVALID_ARGUMENT", "milestoneId must be 1, 2 or 3")
@@ -606,6 +770,18 @@ def milestone_mint(payload: MilestoneMintRequest, session: Session = Depends(get
     if completed_count < required:
         _http_error(400, "NEED_MORE_DAYS", f"need {required}", {"required": required, "completed": completed_count})
 
+    if not settings.demo_mode:
+        try:
+            verifier.verify_milestone_mint(
+                tx_hash=payload.txHash,
+                address=address,
+                chain_id=payload.chainId,
+                contract_address=payload.contractAddress,
+                token_id=_token_id_for_milestone(address, milestone_id),
+            )
+        except ChainVerificationError as exc:
+            _http_error(400, "INVALID_CHAIN_RECEIPT", str(exc))
+
     milestones[str(milestone_id)] = payload.txHash
     progress.milestones = milestones
     progress.updated_at = datetime.utcnow()
@@ -615,8 +791,13 @@ def milestone_mint(payload: MilestoneMintRequest, session: Session = Depends(get
 
 
 @router.get("/progress", response_model=ProgressResponse)
-async def progress(address: str, session: Session = Depends(get_session)):
+async def progress(
+    address: str,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
     address = _require_address(address)
+    _authorize_address(address, authorization, session)
     progress = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
     timezone = progress.timezone if progress else settings.default_timezone
 
@@ -742,7 +923,12 @@ def metadata(token_id: str, session: Session = Depends(get_session)):
 
 
 @router.post("/ai/reflection", response_model=AiReflectionResponse)
-async def ai_reflection(payload: AiReflectionRequest):
+async def ai_reflection(
+    payload: AiReflectionRequest,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    _authorize_session(authorization, session)
     if not payload.userText or not payload.task:
         _http_error(400, "INVALID_ARGUMENT", "userText and task are required")
     reflection = await generate_reflection(payload.task.model_dump(), payload.userText)
@@ -750,7 +936,12 @@ async def ai_reflection(payload: AiReflectionRequest):
 
 
 @router.post("/ai/generate-nft", response_model=GenerateNftResponse)
-def ai_generate_nft(payload: GenerateNftRequest):
+def ai_generate_nft(
+    payload: GenerateNftRequest,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    _authorize_session(authorization, session)
     if payload.userText is None or payload.dayIndex is None:
         _http_error(400, "INVALID_ARGUMENT", "userText and dayIndex are required")
     image = generate_nft_image(
@@ -770,8 +961,14 @@ def ai_generate_nft(payload: GenerateNftRequest):
 
 
 @router.get("/report", response_model=ReportResponse)
-async def report(address: str, range: str, session: Session = Depends(get_session)):
+async def report(
+    address: str,
+    range: str,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
     address = _require_address(address)
+    _authorize_address(address, authorization, session)
     if range not in ("week", "final"):
         _http_error(400, "INVALID_ARGUMENT", "range must be week or final")
 

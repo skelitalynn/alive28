@@ -8,11 +8,15 @@ class Settings(BaseModel):
     default_timezone: str = os.getenv("DEFAULT_TIMEZONE", "Asia/Shanghai")
     challenge_id: int = int(os.getenv("CHALLENGE_ID", "1"))
     chain_id: int = int(os.getenv("CHAIN_ID", "11155111"))
+    rpc_url: str = os.getenv("RPC_URL", "")
     proof_registry_address: str = os.getenv("PROOF_REGISTRY_ADDRESS", "0x0000000000000000000000000000000000000000")
+    restart_badge_address: str = os.getenv("RESTART_BADGE_ADDRESS", "0x0000000000000000000000000000000000000000")
     milestone_nft_address: str = os.getenv("MILESTONE_NFT_ADDRESS", "0x0000000000000000000000000000000000000000")
     milestone_base_uri: str = os.getenv("MILESTONE_BASE_URI", "https://api.YOUR_DOMAIN/metadata/")
     llm_provider: str = os.getenv("DEFAULT_LLM_PROVIDER", "deepseek")
     llm_model: str = os.getenv("DEFAULT_MODEL", "deepseek-chat")
+    auth_nonce_ttl_seconds: int = int(os.getenv("AUTH_NONCE_TTL_SECONDS", "300"))
+    auth_session_ttl_seconds: int = int(os.getenv("AUTH_SESSION_TTL_SECONDS", "86400"))
     demo_mode: bool = os.getenv("DEMO_MODE", "false").lower() == "true"
     demo_start_date_key: str = os.getenv("DEMO_START_DATE_KEY", "")
 

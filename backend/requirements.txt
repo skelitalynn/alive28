@@ -4,6 +4,8 @@ sqlmodel
 python-dotenv
 eth-utils
 eth-hash
+eth-account==0.13.7
+web3==7.11.0
 aiofiles
 spoon-ai-sdk==0.4.10
 pydantic

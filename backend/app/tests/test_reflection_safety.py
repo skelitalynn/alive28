@@ -4,12 +4,14 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session, create_engine, select
 
 from backend.app.database import get_session
+from backend.app.config import settings
 from backend.app.main import app
 from backend.app.models import DailyLog, UserProgress
 
 
 @pytest.fixture
-def checkin_client():
+def checkin_client(monkeypatch):
+    monkeypatch.setattr(settings, "demo_mode", True)
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},

@@ -8,8 +8,6 @@ import { useAddress } from "../../../components/addressContext";
 import type { DailyLog, DailyTask } from "../../../lib/store/schema";
 import type { CheckinOutcome } from "../../../lib/api/client";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
-
 export default function DailyPage() {
   const params = useParams();
   const router = useRouter();
@@ -136,23 +134,13 @@ export default function DailyPage() {
     setNftError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/ai/generate-nft`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dayIndex,
-          taskTitle: task?.title || `Day ${dayIndex}`,
-          userText: output.log.normalizedText,
-          reflectionNote: output.log.reflection.note,
-          reflectionNext: output.log.reflection.next,
-        }),
+      const data = await api.generateNft({
+        dayIndex,
+        taskTitle: task?.title || `Day ${dayIndex}`,
+        userText: output.log.normalizedText,
+        reflectionNote: output.log.reflection.note,
+        reflectionNext: output.log.reflection.next,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "生成失败");
-      }
 
       setNftImage(data.image);
     } catch (e: any) {

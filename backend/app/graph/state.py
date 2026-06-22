@@ -44,6 +44,7 @@ class GraphState(TypedDict, total=False):
     logId: Optional[str]
     txHash: Optional[str]
     txStatus: Optional[str]
+    blockNumber: Optional[int]
     chainId: Optional[int]
     contractAddress: Optional[str]
     streak: int

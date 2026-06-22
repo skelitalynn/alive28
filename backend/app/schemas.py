@@ -37,6 +37,26 @@ class UserUpdateRequest(BaseModel):
     timezone: str
 
 
+class AuthNonceRequest(BaseModel):
+    address: str
+
+
+class AuthNonceResponse(BaseModel):
+    message: str
+    expiresAt: str
+
+
+class AuthVerifyRequest(BaseModel):
+    address: str
+    signature: str
+
+
+class AuthVerifyResponse(BaseModel):
+    token: str
+    address: str
+    expiresAt: str
+
+
 class CheckinRequest(BaseModel):
     checkinId: Optional[str] = Field(
         default=None,

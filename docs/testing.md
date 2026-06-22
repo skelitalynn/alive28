@@ -5,7 +5,7 @@
 | 范围 | 命令 | 当前覆盖 |
 |---|---|---|
 | Harness 和文档 | `python scripts/harness/check_docs.py` | 文档路由、配置和本地链接 |
-| 后端 | `python -m pytest backend/app/tests -q` | Proof、Reflection Safety、Checkpoint 恢复、事务回滚与日志幂等 |
+| 后端 | `python -m pytest backend/app/tests -q` | 钱包认证、receipt/event、Reflection Safety、Checkpoint、事务与幂等 |
 | 前端 | `npm --prefix frontend run build` | Next.js 构建和 TypeScript 检查 |
 | 合约 | `forge test --root contracts` | ProofRegistry 与 RestartBadgeNFT |
 
@@ -42,7 +42,7 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 Invoke-RestMethod "http://127.0.0.1:8000/dailyPrompt?dayIndex=1"
 ```
 
-打卡：
+Demo 模式可直接打卡：
 
 ```powershell
 $body = @{
@@ -59,6 +59,9 @@ Invoke-RestMethod `
   -ContentType "application/json" `
   -Body $body
 ```
+
+非 Demo 模式必须先通过前端钱包签署 `/auth/nonce` 返回的 message，并把
+`/auth/verify` 返回的 token 作为 `Authorization: Bearer <token>` 发送。
 
 随后检查：
 
@@ -79,6 +82,9 @@ Invoke-RestMethod "http://127.0.0.1:8000/report?address=0x1111111111111111111111
 - 恢复不重复调用 Reflection、不重复日志和 streak。
 - 同 ID 不同输入返回冲突。
 - 模型次数、节点耗时、节点尝试次数和错误摘要。
+- nonce 单次消费、session 地址绑定和未认证拒绝。
+- Proof receipt 的 chain、status、sender、contract 和事件匹配。
+- 伪造 Day NFT 与 Milestone 事件不会改变本地状态。
 
 仍缺少大规模离线安全评测、真实供应商故障测试、并发恢复竞争和 Checkpoint 生命周期测试。
 
