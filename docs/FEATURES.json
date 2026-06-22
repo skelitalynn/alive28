@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "features": [
+    {
+      "id": "F-001",
+      "behavior": "项目文档可从 docs/README.md 定位产品、架构、开发、测试、进度、决策和功能状态，且不存在旧版重复文档",
+      "state": "passing",
+      "verification": [
+        "python scripts/harness/check_docs.py"
+      ],
+      "evidence": ".harness\\evidence\\F-001\\20260622T024943Z\\result.json",
+      "blocked_reason": null
+    }
+  ]
+}

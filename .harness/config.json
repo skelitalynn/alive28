@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "generated_by": "harness-adopter",
+  "generator_version": "0.1.0",
+  "documents": {
+    "entrypoint": "docs/README.md",
+    "architecture": "docs/ARCHITECTURE.md",
+    "progress": "docs/PROGRESS.md",
+    "decisions": "docs/DECISIONS.md",
+    "development": "docs/DEVELOPMENT.md",
+    "testing": "docs/testing.md",
+    "features": "docs/FEATURES.json"
+  },
+  "commands": {
+    "setup": "python -m pip install -r backend/requirements.txt && npm --prefix frontend ci && git submodule update --init --recursive",
+    "check": [
+      "python scripts/harness/check_docs.py",
+      "python -m pytest backend/app/tests -q",
+      "npm --prefix frontend run build",
+      "forge test --root contracts"
+    ]
+  },
+  "rules": {
+    "wip_limit": 1,
+    "completion_requires_verification": true,
+    "evidence_directory": ".harness/evidence",
+    "session_directory": ".harness/session"
+  }
+}

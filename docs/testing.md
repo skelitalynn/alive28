@@ -1,105 +1,131 @@
-﻿# MVP 本地测试步骤（不上链）
+# 测试与完成定义
 
-> 目标：跑通“打卡 → 生成 proofHash → 进度/报告”全流程，不触发链上交易。
+## 验证层级
 
-## 0. 前置检查
-- 当前目录应为项目根目录：`C:\Users\86183\Desktop\web3实习计划\project`
-- 后端使用根目录 `.venv`（如未创建请先执行 `python -m venv .venv`）
+| 范围 | 命令 | 当前覆盖 |
+|---|---|---|
+| Harness 和文档 | `python scripts/harness/check_docs.py` | 文档路由、配置和本地链接 |
+| 后端 | `python -m pytest backend/app/tests -q` | Proof 哈希、日期计算、日志唯一约束 |
+| 前端 | `npm --prefix frontend run build` | Next.js 构建和 TypeScript 检查 |
+| 合约 | `forge test --root contracts` | ProofRegistry 与 RestartBadgeNFT |
 
-## 1. 启动后端
+完整验证：
+
 ```powershell
-cd backend
-..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+python scripts/harness/doctor.py --run
 ```
 
-确认后端健康：
-```text
-http://127.0.0.1:8000/health
-```
-应返回：
-```json
-{"status":"ok","version":"mvp-1.0.0"}
-```
+Harness 会顺序执行 `.harness/config.json` 中的 `commands.check`，并在任务验证时把输出写入 `.harness/evidence/`。
 
-## 2. 启动前端
+## 首次验证前
+
 ```powershell
-cd ..\frontend
-npm install
-npm run dev
+.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+npm --prefix frontend ci
+git submodule update --init --recursive
 ```
 
-确认前端可访问：
-```text
-http://localhost:3000
-```
+如果当前终端没有激活 `.venv`，后端测试应使用：
 
-## 3. 基础接口测试（可选）
-### 3.0 使用 Postman（可选）
-可以。你可以用 Postman 直接请求接口并查看返回 JSON。
-
-**Postman 设置（通用）**
-- Method: `GET` 或 `POST`
-- URL: `http://127.0.0.1:8000/...`
-- Headers: `Content-Type: application/json`
-
-**示例：POST /checkin**
-- Method: `POST`
-- URL: `http://127.0.0.1:8000/checkin`
-- Headers: `Content-Type: application/json`
-- Body → raw → JSON：
-```json
-{
-  "address": "0x1111111111111111111111111111111111111111",
-  "timezone": "Asia/Shanghai",
-  "text": "今天完成了第一天打卡",
-  "imageUrl": null
-}
-```
-响应会返回 JSON（含 `logId` / `proofHash` / `reflection` / `streak`）。
-
-### 3.1 获取 Day 1 任务卡
-浏览器打开：
-```text
-http://127.0.0.1:8000/dailyPrompt?dayIndex=1
-```
-
-### 3.2 打卡（POST /checkin）
-PowerShell：
 ```powershell
-$body = @{ 
-  address = "0x1111111111111111111111111111111111111111";
-  timezone = "Asia/Shanghai";
-  text = "今天完成了第一天打卡";
+.\.venv\Scripts\python.exe -m pytest backend/app/tests -q
+```
+
+`.harness/config.json` 使用通用的 `python` 命令，CI 或本地执行者必须确保它指向已安装依赖的环境。
+
+## 接口冒烟测试
+
+后端启动后：
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod "http://127.0.0.1:8000/dailyPrompt?dayIndex=1"
+```
+
+打卡：
+
+```powershell
+$body = @{
+  address = "0x1111111111111111111111111111111111111111"
+  dayIndex = 1
+  timezone = "Asia/Shanghai"
+  text = "今天完成了第一天记录"
   imageUrl = $null
 } | ConvertTo-Json
 
-Invoke-RestMethod -Uri http://127.0.0.1:8000/checkin -Method Post -ContentType "application/json" -Body $body
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/checkin `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body $body
 ```
-预期返回字段包含：`logId`、`proofHash`、`reflection`、`streak`。
 
-### 3.3 进度查询（GET /progress）
+随后检查：
+
 ```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/progress?address=0x1111111111111111111111111111111111111111"
+Invoke-RestMethod "http://127.0.0.1:8000/progress?address=0x1111111111111111111111111111111111111111"
+Invoke-RestMethod "http://127.0.0.1:8000/report?address=0x1111111111111111111111111111111111111111&range=week"
 ```
 
-### 3.4 报告（GET /report）
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/report?address=0x1111111111111111111111111111111111111111&range=week"
-```
+## LLM 验证缺口
 
-## 4. 前端交互测试（不触发上链）
-1. 打开 `http://localhost:3000/enter`，连接钱包（可选）
-2. 进入 `http://localhost:3000/daily/1`
-3. 输入一句话，点击“打卡并生成 proofHash”
-4. 不要点击“上链提交”（避免链上 RPC 报错）
-5. 打开 `http://localhost:3000/progress` 查看 streak
-6. 打开 `http://localhost:3000/report` 查看报告
+当前自动化没有覆盖：
 
-## 5. 常见问题
-- **Failed to fetch**：后端未运行或前端未重启
-- **/dailyPrompt 500**：tasks.json BOM（已处理），重启后端
-- **/checkin 500**：GraphAgent 报错时查看后端终端日志
+- 输出仅包含 `note` 和 `next`。
+- 长度下限、动作数量和任务相关性。
+- 诊断、用药、绝对化承诺等禁止内容。
+- Prompt 注入。
+- 自伤或他伤输入的风险路由。
+- LLM 超时、错误 JSON 和 fallback 指标。
+- 模型或 Prompt 变更后的回归评测。
 
----
+在补齐这些测试前，不能把“返回了合法 JSON”等同于“反馈安全有效”。
 
-如需上链测试，请再单独部署合约并配置 `NEXT_PUBLIC_RPC_URL`、`NEXT_PUBLIC_PROOF_REGISTRY`。
+## Reflection Safety 计划验收
+
+下一阶段自动测试至少覆盖：
+
+- 有效输入进入普通生成并保存一次。
+- 短但真实的输入不会仅因字数被拒绝。
+- 随机字符、广告和 Prompt 注入返回 `clarify` 或 `reject`。
+- `clarify`、`reject` 不创建日志、不更新 streak、不生成 Proof。
+- 危机输入优先于质量判断进入危机路径。
+- 危机路径不创建 Proof、不更新 streak、不触发 NFT。
+- 模型多字段、缺字段、错误类型和超长输出被拒绝。
+- 诊断、用药、保证性承诺和危险动作被语义校验拒绝。
+- Repair 最多执行一次。
+- Repair 仍失败时进入与失败类型匹配的 fallback。
+- 临时网络错误按策略重试，内容错误不作为网络重试。
+- Checkpoint 恢复不会重复创建日志或增加 streak。
+- 数据库任一写入失败时整个打卡事务回滚。
+
+链上阶段测试至少覆盖：
+
+- 任意地址不能通过伪造请求修改其他用户状态。
+- 任意 `txHash` 不能在没有合法 receipt 和 event 时确认成功。
+- 未批准的 Proof 不能获得正式里程碑资格。
+- revoked Proof 不参与后续里程碑计算。
+- 链后补偿保留原交易历史。
+
+详细测试数据分类和分阶段完成标准见 `IMPLEMENTATION_PLAN.md`。
+
+## 手工端到端检查
+
+1. 首页可以建立 Demo 身份或连接钱包。
+2. `/daily/1` 可以读取任务、提交文字并显示反馈。
+3. 重复提交同一日期不会创建第二条日志。
+4. `/progress` 显示完成天数。
+5. `/report` 可生成周报或使用 fallback。
+6. 未配置合约时不执行真实交易。
+
+## 完成定义
+
+功能项只有在以下条件全部满足时才能进入 `passing`：
+
+- `docs/FEATURES.json` 中有可观察行为和独立验证命令。
+- `python scripts/harness/task.py verify <ID>` 返回成功。
+- `.harness/evidence/<ID>/.../result.json` 已生成。
+- 相关文档与 `.env.example` 已同步。
+- 没有通过吞掉异常、跳过检查或伪造链上确认来获得绿灯。
+
+当前仓库没有 CI。Harness 本地验证不能替代未来的持续集成。
