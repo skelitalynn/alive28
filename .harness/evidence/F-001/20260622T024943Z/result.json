@@ -1,0 +1,14 @@
+{
+  "feature_id": "F-001",
+  "verified_at": "20260622T024943Z",
+  "passed": true,
+  "commands": [
+    {
+      "command": "python scripts/harness/check_docs.py",
+      "returncode": 0,
+      "log": ".harness\\evidence\\F-001\\20260622T024943Z\\command-01.log"
+    }
+  ],
+  "git_head": "6e4e3a1",
+  "working_tree_dirty": true
+}
