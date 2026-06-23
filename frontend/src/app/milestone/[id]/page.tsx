@@ -80,9 +80,15 @@ export default function MilestonePage() {
       }
 
       // 正常模式：必须上链铸造
+      const preparation = await api.prepareMilestone({
+        address: wagmiAddress,
+        milestoneId
+      });
       const { txHash } = await mintMilestoneNFT(
         wagmiAddress as `0x${string}`,
         milestoneId,
+        BigInt(preparation.tokenId),
+        preparation.tokenUri,
         publicClient,
         walletClient
       );

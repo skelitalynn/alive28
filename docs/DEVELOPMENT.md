@@ -149,6 +149,10 @@ forge script script/Deploy.s.sol --rpc-url $env:RPC_URL --private-key $env:PRIVA
 
 `PROOF_VALIDATOR` 必须等于后端 `PROOF_APPROVAL_PRIVATE_KEY` 派生出的地址。部署后把地址同步到后端和 `frontend/.env.local`。私钥和真实环境文件不得提交。
 
+非 Demo 里程碑铸造会先调用 `POST /milestone/prepare`。确保后端
+`MILESTONE_BASE_URI` 是公开可访问的 metadata 根地址；前端会原样使用后端返回的
+`tokenId` 和 `tokenUri` 发起交易。
+
 ## 数据库
 
 后端启动时调用 `SQLModel.metadata.create_all()`，不会迁移已有表。

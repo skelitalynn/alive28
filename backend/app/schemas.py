@@ -214,6 +214,19 @@ class MilestoneMintRequest(BaseModel):
     contractAddress: str
 
 
+class MilestonePrepareRequest(BaseModel):
+    address: str
+    milestoneId: int
+
+
+class MilestonePrepareResponse(BaseModel):
+    milestoneId: int
+    requiredDays: int
+    completedDays: int
+    tokenId: str
+    tokenUri: str
+
+
 class MilestoneMintResponse(BaseModel):
     ok: bool
     milestones: Dict[str, Optional[str]]

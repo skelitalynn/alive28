@@ -1,4 +1,12 @@
-import type { ApiClient, CheckinResult, DailySnapshot, HomeSnapshot, ProgressData, ReportData } from "./client";
+import type {
+  ApiClient,
+  CheckinResult,
+  DailySnapshot,
+  HomeSnapshot,
+  MilestoneMintPreparation,
+  ProgressData,
+  ReportData
+} from "./client";
 import type { DailyLog, User } from "../store/schema";
 import { encodeFunctionData } from "viem";
 import { mockTxHash } from "../logic/proof";
@@ -381,6 +389,16 @@ async function composeFinal(params: { address: string }): Promise<User> {
   return toUser(progress);
 }
 
+async function prepareMilestone(params: {
+  address: string;
+  milestoneId: number;
+}): Promise<MilestoneMintPreparation> {
+  return fetchJson<MilestoneMintPreparation>("/milestone/prepare", {
+    method: "POST",
+    body: JSON.stringify(params)
+  });
+}
+
 async function mintMilestone(params: { address: string; milestoneId: number; txHash?: string }): Promise<User> {
   // DEMO_MODE: 若未传 txHash，则生成 mockTxHash 上报后端
   const txHash = params.txHash || mockTxHash(`tx:milestone:${params.milestoneId}:${Date.now()}`);
@@ -442,6 +460,7 @@ export const httpClient: ApiClient = {
   mintDay,
   getProgress,
   composeFinal,
+  prepareMilestone,
   mintMilestone,
   getReport,
   generateNft

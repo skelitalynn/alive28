@@ -71,6 +71,17 @@
       ],
       "evidence": ".harness\\evidence\\F-007\\20260623T065217Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-008",
+      "behavior": "An authenticated eligible user obtains milestone mint preparation from the backend, including the canonical deterministic tokenId and metadata URI used by receipt verification; the frontend mints exactly those values and no longer invents timestamp-based token IDs, so a valid MilestoneNFT Transfer event can be confirmed and recorded idempotently.",
+      "state": "passing",
+      "verification": [
+        ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_milestone_mint_flow.py backend\\app\\tests\\test_wallet_auth_and_receipts.py backend\\app\\tests\\test_proof_approval_and_compensation.py -q",
+        "npm --prefix frontend run build"
+      ],
+      "evidence": ".harness\\evidence\\F-008\\20260623T070105Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }

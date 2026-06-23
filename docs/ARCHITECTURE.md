@@ -152,6 +152,21 @@ Browser sends submitProof(dayIndex, proofHash, deadline, approvalId, signature)
 
 客户端提交的 `chainId`、`contractAddress` 和 `address` 均为不可信输入。RPC 不可用、交易回滚、发送者不匹配、目标合约错误或事件内容错误时，本地状态不改变。
 
+里程碑 NFT 使用后端准备流程：
+
+```text
+POST /milestone/prepare(address, milestoneId)
+  -> verify wallet session and completed eligible days
+  -> derive tokenId = keccak256(address bytes + one-byte milestoneId)
+  -> return canonical tokenId and metadata URI
+Browser mints exactly tokenId + tokenUri
+POST /milestone/mint(txHash)
+  -> verify Transfer event contains the same canonical tokenId
+  -> record milestone idempotently
+```
+
+前端不再生成随机或时间相关 tokenId，避免链上成功但后端因事件值不一致而拒绝确认。
+
 ### Proof 补偿
 
 `POST /proof/compensate` 只追加 `ProofCompensation` 审计记录，不删除原交易或原始 Proof：

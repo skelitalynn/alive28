@@ -1,5 +1,8 @@
 import { type Address, type PublicClient, type WalletClient } from "viem";
-import { getMilestoneNFTContract, generateTokenId, getMilestoneImageForId, generateMilestoneMetadata } from "./milestoneNFT";
+import {
+  getMilestoneNFTContract,
+  getMilestoneImageForId
+} from "./milestoneNFT";
 
 /**
  * Mint milestone NFT on-chain.
@@ -8,14 +11,13 @@ import { getMilestoneNFTContract, generateTokenId, getMilestoneImageForId, gener
 export async function mintMilestoneNFT(
   address: Address,
   milestoneId: number,
+  tokenId: bigint,
+  tokenURI: string,
   publicClient: PublicClient,
-  walletClient: WalletClient,
-  aiReflection?: { note: string; next: string }
+  walletClient: WalletClient
 ): Promise<{ txHash: string; imageUrl: string; tokenId: bigint }> {
   try {
     const imageUrl = getMilestoneImageForId(milestoneId as 1 | 2 | 3);
-    const tokenId = generateTokenId(milestoneId, address);
-    const tokenURI = generateMilestoneMetadata(milestoneId, imageUrl, address, aiReflection);
 
     const contractAddress = getMilestoneNFTContract();
     if (contractAddress === "0x0000000000000000000000000000000000000000") {

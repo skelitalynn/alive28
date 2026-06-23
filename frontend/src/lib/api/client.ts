@@ -75,6 +75,14 @@ export type GenerateNftResult = {
   message: string;
 };
 
+export type MilestoneMintPreparation = {
+  milestoneId: number;
+  requiredDays: number;
+  completedDays: number;
+  tokenId: string;
+  tokenUri: string;
+};
+
 export interface ApiClient {
   authenticateWallet: (
     address: string,
@@ -89,6 +97,10 @@ export interface ApiClient {
   mintDay: (params: { address: string }) => Promise<DailyLog>;
   getProgress: (params: { address: string }) => Promise<ProgressData>;
   composeFinal: (params: { address: string }) => Promise<User>;
+  prepareMilestone: (params: {
+    address: string;
+    milestoneId: number;
+  }) => Promise<MilestoneMintPreparation>;
   mintMilestone: (params: { address: string; milestoneId: number; txHash?: string }) => Promise<User>;
   getReport: (params: { address: string; range: "week" | "final" }) => Promise<ReportData>;
   generateNft: (params: {

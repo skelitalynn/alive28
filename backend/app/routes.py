@@ -38,6 +38,8 @@ from .schemas import (
     HomeSnapshotResponse,
     MilestoneMintRequest,
     MilestoneMintResponse,
+    MilestonePrepareRequest,
+    MilestonePrepareResponse,
     AiReflectionRequest,
     AiReflectionResponse,
     GenerateNftRequest,
@@ -185,6 +187,33 @@ def _token_id_for_milestone(address: str, milestone_id: int) -> int:
     addr_bytes = bytes.fromhex(address[2:])
     packed = addr_bytes + bytes([milestone_id])
     return int.from_bytes(keccak(packed), "big")
+
+
+def _milestone_required_days(milestone_id: int) -> int:
+    if milestone_id == 1:
+        return 7
+    if milestone_id == 2:
+        return 14
+    if milestone_id == 3:
+        return 28
+    _http_error(400, "INVALID_ARGUMENT", "milestoneId must be 1, 2 or 3")
+
+
+def _milestone_token_uri(token_id: int) -> str:
+    return f"{settings.milestone_base_uri.rstrip('/')}/{token_id}.json"
+
+
+def _milestone_completed_days(
+    session: Session,
+    address: str,
+) -> int:
+    logs = session.exec(
+        select(DailyLog).where(
+            DailyLog.address == address,
+            DailyLog.challenge_id == settings.challenge_id,
+        )
+    ).all()
+    return len({log.day_index for log in logs if is_log_eligible(log)})
 
 
 def _parse_token_id(token_id: str) -> int:
@@ -908,6 +937,42 @@ def nft_confirm(
     return {"ok": True}
 
 
+@router.post("/milestone/prepare", response_model=MilestonePrepareResponse)
+def milestone_prepare(
+    payload: MilestonePrepareRequest,
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    address = _require_address(payload.address)
+    _authorize_address(address, authorization, session)
+    milestone_id = payload.milestoneId
+    required = _milestone_required_days(milestone_id)
+    progress = session.get(UserProgress, address)
+    if not progress:
+        _http_error(404, "NOT_FOUND", "user not found")
+    milestones = _ensure_milestones(progress, session)
+    if milestones.get(str(milestone_id)):
+        _http_error(409, "MILESTONE_ALREADY_MINTED", "milestone is already minted")
+
+    completed_count = _milestone_completed_days(session, address)
+    if completed_count < required:
+        _http_error(
+            400,
+            "NEED_MORE_DAYS",
+            f"need {required}",
+            {"required": required, "completed": completed_count},
+        )
+
+    token_id = _token_id_for_milestone(address, milestone_id)
+    return {
+        "milestoneId": milestone_id,
+        "requiredDays": required,
+        "completedDays": completed_count,
+        "tokenId": str(token_id),
+        "tokenUri": _milestone_token_uri(token_id),
+    }
+
+
 @router.post("/milestone/mint", response_model=MilestoneMintResponse)
 def milestone_mint(
     payload: MilestoneMintRequest,
@@ -918,8 +983,7 @@ def milestone_mint(
     address = _require_address(payload.address)
     _authorize_address(address, authorization, session)
     milestone_id = payload.milestoneId
-    if milestone_id not in (1, 2, 3):
-        _http_error(400, "INVALID_ARGUMENT", "milestoneId must be 1, 2 or 3")
+    required = _milestone_required_days(milestone_id)
 
     progress = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
     if not progress:
@@ -929,15 +993,7 @@ def milestone_mint(
     if milestones.get(str(milestone_id)):
         return {"ok": True, "milestones": milestones}
 
-    logs = session.exec(
-        select(DailyLog).where(
-            DailyLog.address == address,
-            DailyLog.challenge_id == settings.challenge_id,
-        )
-    ).all()
-    completed_days = {l.day_index for l in logs if is_log_eligible(l)}
-    completed_count = len(completed_days)
-    required = 7 if milestone_id == 1 else 14 if milestone_id == 2 else 28
+    completed_count = _milestone_completed_days(session, address)
 
     if completed_count < required:
         _http_error(400, "NEED_MORE_DAYS", f"need {required}", {"required": required, "completed": completed_count})

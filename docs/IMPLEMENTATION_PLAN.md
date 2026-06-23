@@ -513,7 +513,7 @@ validatorVersion
 
 完成条件：伪造地址或 txHash 不能改变他人状态或获得里程碑。
 
-状态：已完成。`F-004` 实现钱包 nonce 签名 session，以及 Proof、Day/Final NFT、Milestone 的 receipt/sender/contract/event 验证；`F-005` 增加短期单次 validator 批准、合约签名校验、批准消费、revoke/supersede 追加审计和资格过滤。当前补偿状态属于后端产品读取模型，不删除链上历史。
+状态：已完成。`F-004` 实现钱包 nonce 签名 session，以及 Proof、Day/Final NFT、Milestone 的 receipt/sender/contract/event 验证；`F-005` 增加短期单次 validator 批准、合约签名校验、批准消费、revoke/supersede 追加审计和资格过滤；`F-008` 让里程碑铸造与事件验证共享后端规范 tokenId 和 metadata URI。当前补偿状态属于后端产品读取模型，不删除链上历史。
 
 ### Phase 4：隐私和长期记忆
 

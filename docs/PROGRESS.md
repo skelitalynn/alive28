@@ -4,7 +4,7 @@
 
 ## 当前目标
 
-`F-007 NFT Image Prompt Privacy` 已完成实现与本地验证。图片生成使用钱包授权的日志引用，第三方 Prompt 不包含日记或 Reflection。
+`F-008 Canonical Milestone Mint Preparation` 已完成实现与本地验证。里程碑 tokenId 和 metadata URI 由后端统一准备，前端不再生成随机 ID。
 
 ## 最近完成
 
@@ -35,6 +35,7 @@
 - 被撤销记录不再参与进度、报告、Day NFT 本地确认或里程碑资格；替代哈希不会绕过安全 Graph 获得新批准。
 - 新增可 dry-run、可重复执行的临时状态清理服务和运维命令。
 - NFT 图片接口只接受用户拥有的日志引用；第三方 Prompt 仅使用公开 Day、任务标题和阶段配色。
+- 里程碑准备接口统一资格检查、tokenId 和 metadata URI；前端铸造与后端事件验证使用同一 tokenId。
 
 ## 当前实现状态
 
@@ -71,15 +72,15 @@
 2026-06-22：
 
 - SpoonOS SDK 锁定为 `spoon-ai-sdk==0.4.10`。
-- 后端测试：32 passed。
+- 后端测试：34 passed。
 - 合约测试：6 passed。
 - Next.js 生产构建通过。
 - Harness 文档路由检查通过。
-- `F-002` 至 `F-007` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
+- `F-002` 至 `F-008` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
 
 ## 下一步建议
 
-1. 修复里程碑 NFT tokenId 与后端验证算法不一致的问题。
+1. 修复用户主路径中的历史乱码并增加端到端闭环验收。
 2. 为长期记忆增加明确授权、查看、删除和撤回。
 3. 决定是否把 Proof 补偿状态同步到链上，阻止撤销后的合约级后续铸造。
 4. 清理历史前端 Agent，实现正式数据库迁移和 CI。

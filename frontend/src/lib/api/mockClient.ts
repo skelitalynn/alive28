@@ -290,6 +290,21 @@ async function mintMilestone(params: { address: string; milestoneId: number }): 
   return user;
 }
 
+async function prepareMilestone(params: {
+  address: string;
+  milestoneId: number;
+}) {
+  const requiredDays =
+    params.milestoneId === 1 ? 7 : params.milestoneId === 2 ? 14 : 28;
+  return {
+    milestoneId: params.milestoneId,
+    requiredDays,
+    completedDays: requiredDays,
+    tokenId: String(params.milestoneId),
+    tokenUri: `mock://milestone/${params.milestoneId}`
+  };
+}
+
 async function getReport(params: { address: string; range: "week" | "final" }): Promise<ReportData> {
   const { address, range } = params;
   const store = loadStore();
@@ -334,6 +349,7 @@ export const mockClient: ApiClient = {
   mintDay,
   getProgress,
   composeFinal,
+  prepareMilestone,
   mintMilestone,
   getReport,
   generateNft: async () => {

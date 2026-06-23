@@ -25,6 +25,7 @@
 | 2026-06-22 | revoke/supersede 是后端追加式补偿记录 | 链上历史不可删除；撤销影响产品读取和资格，替代只用于已上链 Proof，且任意替代哈希不会自动获得新批准 | Accepted |
 | 2026-06-22 | 临时安全状态由显式幂等维护命令清理 | challenge、session、未消费批准和 Checkpoint 不应无限增长；完成 Checkpoint 保留 7 天、未完成保留 30 天，已消费批准和业务记录不删除 | Accepted |
 | 2026-06-23 | NFT 图片 Prompt 只使用公开任务视觉元数据 | 图片供应商不需要日记或 Reflection 即可生成装饰性资产；钱包 session 与日志所有权只用于授权，不进入 Prompt | Accepted |
+| 2026-06-23 | 里程碑 tokenId 和 metadata URI 由后端准备 | tokenId 同时参与前端交易和后端事件验证，必须只有一个规范算法；前端不得使用时间戳或随机值 | Accepted |
 
 ## 待决定
 
