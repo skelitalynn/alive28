@@ -6,12 +6,21 @@ import json
 from typing import Optional
 
 
-def _build_prompt(day_index: int, task_title: str, user_text: str, reflection_note: str) -> str:
+def _build_prompt(day_index: int, task_title: str) -> str:
+    phase = (
+        "gentle renewal with pink and rose tones"
+        if day_index <= 7
+        else "steady momentum with warm orange and coral tones"
+        if day_index <= 14
+        else "clear boundaries with cyan and blue tones"
+        if day_index <= 21
+        else "integration and celebration with gold and amber tones"
+    )
     return (
         "Create a beautiful, abstract digital art piece for a personal growth NFT collection.\n"
         f"Theme: \"Day {day_index} of 28 - {task_title}\"\n"
-        f"User mood keywords: {user_text[:200]}\n"
-        f"Reflection note: {reflection_note[:120]}\n"
+        f"Visual direction: {phase}.\n"
+        "Use only public challenge metadata; do not depict a specific person or private event.\n"
         "Style: modern digital art, clean composition, vibrant yet harmonious colors.\n"
         "No text, no words, no letters in the image."
     )
@@ -97,12 +106,9 @@ def _fallback_svg(day_index: int) -> str:
 def generate_nft_image(
     day_index: int,
     task_title: str,
-    user_text: str,
-    reflection_note: str,
-    reflection_next: str,
     gemini_api_key: str = "",
 ) -> str:
-    prompt = _build_prompt(day_index, task_title, user_text, reflection_note)
+    prompt = _build_prompt(day_index, task_title)
     try:
         image = _pollinations_image(prompt)
         if image:

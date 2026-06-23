@@ -1116,22 +1116,38 @@ def ai_generate_nft(
     authorization: Optional[str] = Header(default=None),
     session: Session = Depends(get_session),
 ):
-    _authorize_session(authorization, session)
-    if payload.userText is None or payload.dayIndex is None:
-        _http_error(400, "INVALID_ARGUMENT", "userText and dayIndex are required")
+    address = _require_address(payload.address)
+    try:
+        authenticated_address = authenticate_bearer_token(
+            session,
+            authorization,
+        )
+    except AuthenticationError as exc:
+        _http_error(401, "AUTH_REQUIRED", str(exc))
+    if authenticated_address != address:
+        _http_error(
+            403,
+            "ADDRESS_FORBIDDEN",
+            "wallet session is bound to a different address",
+        )
+    log = session.get(DailyLog, payload.logId)
+    if not log:
+        _http_error(404, "NOT_FOUND", "logId not found")
+    if log.address != address:
+        _http_error(403, "ADDRESS_FORBIDDEN", "log belongs to another address")
+    if not is_log_eligible(log):
+        _http_error(409, "PROOF_REVOKED", "revoked log cannot generate NFT art")
+    task = get_task_by_day_index(log.day_index)
     image = generate_nft_image(
-        day_index=payload.dayIndex,
-        task_title=payload.taskTitle or f"Day {payload.dayIndex}",
-        user_text=payload.userText,
-        reflection_note=payload.reflectionNote or "",
-        reflection_next=payload.reflectionNext or "",
+        day_index=log.day_index,
+        task_title=task["title"],
         gemini_api_key=os.getenv("GOOGLE_AI_API_KEY", ""),
     )
     return {
         "success": True,
         "image": image,
-        "dayIndex": payload.dayIndex,
-        "message": f"Day {payload.dayIndex} NFT generated",
+        "dayIndex": log.day_index,
+        "message": f"Day {log.day_index} NFT generated",
     }
 
 

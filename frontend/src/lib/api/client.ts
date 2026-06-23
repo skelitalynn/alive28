@@ -92,10 +92,7 @@ export interface ApiClient {
   mintMilestone: (params: { address: string; milestoneId: number; txHash?: string }) => Promise<User>;
   getReport: (params: { address: string; range: "week" | "final" }) => Promise<ReportData>;
   generateNft: (params: {
-    dayIndex: number;
-    taskTitle: string;
-    userText: string;
-    reflectionNote: string;
-    reflectionNext: string;
+    address: string;
+    logId: string;
   }) => Promise<GenerateNftResult>;
 }

@@ -90,6 +90,8 @@ Invoke-RestMethod "http://127.0.0.1:8000/report?address=0x1111111111111111111111
 
 生命周期测试覆盖 dry-run、实际清理、重复执行、完成/未完成 Checkpoint 的不同保留期，以及业务记录和已消费批准的保留。
 
+NFT 图片隐私测试覆盖钱包认证、日志所有权、撤销过滤、额外客户端字段拒绝，以及第三方 Prompt 中不存在日记、Reflection、地址和 Proof。
+
 ## Reflection Safety 计划验收
 
 下一阶段自动测试至少覆盖：

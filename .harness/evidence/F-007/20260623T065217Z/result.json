@@ -1,0 +1,14 @@
+{
+  "feature_id": "F-007",
+  "verified_at": "20260623T065217Z",
+  "passed": true,
+  "commands": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_nft_image_privacy.py backend\\app\\tests\\test_wallet_auth_and_receipts.py backend\\app\\tests\\test_reflection_safety.py -q",
+      "returncode": 0,
+      "log": ".harness\\evidence\\F-007\\20260623T065217Z\\command-01.log"
+    }
+  ],
+  "git_head": "c2adc78",
+  "working_tree_dirty": true
+}

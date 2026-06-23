@@ -417,11 +417,8 @@ async function getConfig(): Promise<{ demo_mode: boolean }> {
 }
 
 async function generateNft(params: {
-  dayIndex: number;
-  taskTitle: string;
-  userText: string;
-  reflectionNote: string;
-  reflectionNext: string;
+  address: string;
+  logId: string;
 }) {
   return fetchJson<{
     success: boolean;

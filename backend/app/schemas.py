@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict, Any, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ErrorResponse(BaseModel):
@@ -259,11 +259,10 @@ class AiReflectionResponse(BaseModel):
 
 
 class GenerateNftRequest(BaseModel):
-    dayIndex: int
-    taskTitle: Optional[str] = None
-    userText: str
-    reflectionNote: Optional[str] = None
-    reflectionNext: Optional[str] = None
+    model_config = ConfigDict(extra="forbid")
+
+    address: str
+    logId: str
 
 
 class GenerateNftResponse(BaseModel):

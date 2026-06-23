@@ -24,6 +24,7 @@
 | 2026-06-22 | Proof 上链采用短期、单次 EIP-191 validator 批准 | 签名绑定合约、链、钱包、日期、Proof、期限和批准 ID；合约与后端都检查单次消费，未通过安全 Graph 的输入不能直接提交 | Accepted |
 | 2026-06-22 | revoke/supersede 是后端追加式补偿记录 | 链上历史不可删除；撤销影响产品读取和资格，替代只用于已上链 Proof，且任意替代哈希不会自动获得新批准 | Accepted |
 | 2026-06-22 | 临时安全状态由显式幂等维护命令清理 | challenge、session、未消费批准和 Checkpoint 不应无限增长；完成 Checkpoint 保留 7 天、未完成保留 30 天，已消费批准和业务记录不删除 | Accepted |
+| 2026-06-23 | NFT 图片 Prompt 只使用公开任务视觉元数据 | 图片供应商不需要日记或 Reflection 即可生成装饰性资产；钱包 session 与日志所有权只用于授权，不进入 Prompt | Accepted |
 
 ## 待决定
 

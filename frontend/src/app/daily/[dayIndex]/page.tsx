@@ -135,11 +135,8 @@ export default function DailyPage() {
 
     try {
       const data = await api.generateNft({
-        dayIndex,
-        taskTitle: task?.title || `Day ${dayIndex}`,
-        userText: output.log.normalizedText,
-        reflectionNote: output.log.reflection.note,
-        reflectionNext: output.log.reflection.next,
+        address,
+        logId: output.log.id,
       });
 
       setNftImage(data.image);

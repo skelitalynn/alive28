@@ -87,6 +87,16 @@ GET http://127.0.0.1:8000/health
 
 命令可重复执行，适合由 Windows Task Scheduler、cron 或部署平台的定时任务调用。它只删除过期认证材料、过期未消费批准和超出保留期的 Checkpoint，不删除日记、补偿审计、已消费批准或链上确认记录。
 
+### NFT 图片生成
+
+`POST /ai/generate-nft` 只接受：
+
+```json
+{"address":"0x...","logId":"..."}
+```
+
+该接口始终要求钱包 Bearer session，包括 Demo 模式。服务端从所属日志解析 Day，再从 `tasks.json` 读取公开任务标题；日记原文、Reflection、地址、Proof 和客户端自由 Prompt 不会发送给 Pollinations 或 Gemini。
+
 ## 前端
 
 ```powershell

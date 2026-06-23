@@ -61,6 +61,16 @@
       ],
       "evidence": ".harness\\evidence\\F-006\\20260622T095419Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-007",
+      "behavior": "NFT image generation accepts only an authenticated owned persisted log reference; the backend builds third-party image prompts exclusively from public task/day visual metadata, never from diary text, Reflection content, wallet address, proof data, or client-supplied prompt fields, and unauthorized or revoked logs cannot generate images.",
+      "state": "passing",
+      "verification": [
+        ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_nft_image_privacy.py backend\\app\\tests\\test_wallet_auth_and_receipts.py backend\\app\\tests\\test_reflection_safety.py -q"
+      ],
+      "evidence": ".harness\\evidence\\F-007\\20260623T065217Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }

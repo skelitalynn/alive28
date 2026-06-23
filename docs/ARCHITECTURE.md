@@ -45,7 +45,7 @@ Wallet ---------- Solidity contracts
 - `backend/app/services/proof_approval.py`：短期 validator 批准签名、有效 Proof 选择和待处理批准失效。
 - `backend/app/services/cleanup.py`：过期 challenge/session/批准和超出保留期的 Graph Checkpoint 清理。
 - `backend/app/services/report.py`：周报与结营报告生成。
-- `backend/app/services/nft_image.py`：Pollinations、Gemini 和 SVG fallback。
+- `backend/app/services/nft_image.py`：仅使用公开 Day/任务视觉元数据的 Pollinations、Gemini 和 SVG fallback。
 - `backend/app/models.py`：业务记录、Graph Checkpoint、钱包 challenge 与 session。
 - `backend/app/data/tasks.json`：28 天任务内容。
 
@@ -172,11 +172,12 @@ Browser sends submitProof(dayIndex, proofHash, deadline, approvalId, signature)
 - salt、输入哈希和 Proof 哈希。
 - 可选交易哈希。
 
-已确认的风险：
+当前约束：
 
 - 日记以明文保存在 SQLite。
-- LLM 与图片生成 adapter 会接收用户内容。
-- Pollinations Prompt 被编码进 URL。
+- Reflection 与报告 LLM 会接收完成其职责所需的用户内容。
+- NFT 图片生成必须使用钱包 session 和用户拥有的 `DailyLog`，但第三方 Prompt 只包含公开 Day、任务标题和阶段配色，不包含日记、Reflection、地址、Proof 或客户端自由文本。
+- Pollinations Prompt 仍编码进 URL，因此只允许发送公开视觉元数据。
 - Session token 当前由浏览器 `sessionStorage` 保存，仍需要配合生产 HTTPS、严格 CORS 和 XSS 防护。
 
 涉及日记、身份或外部模型的修改必须先阅读 `docs/PROGRESS.md` 的安全阻塞项。
