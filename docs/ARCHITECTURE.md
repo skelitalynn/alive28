@@ -33,6 +33,8 @@ Wallet ---------- Solidity contracts
 
 旧的浏览器端 mock/Agent Adapter、本地 mock store，以及根目录 `frontend/lib/` 平行 API/ABI Module 已删除。前端不再建立与后端并行的 Agent seam；LLM、Reflection Safety 和持久化仍由后端 SpoonOS Graph 负责。
 
+浏览器级 smoke 测试位于 `scripts/e2e/frontend_smoke.mjs`。它只在测试进程中启动受控 mock backend，用来验证真实 Next.js UI 是否仍通过唯一 `httpClient` seam 完成 Demo Day 1 主路径；它不是正式前端业务 mock，不承载 LLM、Agent、安全校验或持久化规则。
+
 ### 后端
 
 - `backend/app/routes.py`：HTTP 接口、输入基础检查和响应映射。

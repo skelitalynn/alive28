@@ -29,8 +29,6 @@ export default function DailyPage() {
     message?: string | null;
     reflection?: DailyLog["reflection"] | null;
   } | null>(null);
-
-  // NFT 生成相关状态
   const [nftImage, setNftImage] = useState<string | null>(null);
   const [isGeneratingNFT, setIsGeneratingNFT] = useState(false);
   const [nftError, setNftError] = useState<string | null>(null);
@@ -41,30 +39,28 @@ export default function DailyPage() {
   const loadSnapshot = async (syncText: boolean) => {
     if (!address) return;
     const data = await api.getDailySnapshot(address, dayIndex);
+    const matchingLog = data.log && data.log.dayIndex === dayIndex ? data.log : null;
     setTask(data.task);
     setDateKey(data.dateKey);
-    setLog(data.log);
-
-    // 只有当找到的日志的 dayIndex 匹配时才认为已完成
-    const isAlreadyCheckedIn = !!(data.log && data.log.dayIndex === dayIndex);
-    setAlready(isAlreadyCheckedIn);
+    setLog(matchingLog);
+    setAlready(!!matchingLog);
 
     if (syncText) {
-      setText(data.log?.normalizedText || "");
-    } else if (!data.log || data.log.dayIndex !== dayIndex) {
+      setText(matchingLog?.normalizedText || "");
+    } else if (!matchingLog) {
       setText("");
     }
 
-    if (!data.log || data.log.dayIndex !== dayIndex) {
+    if (!matchingLog) {
       setOutput(null);
       return;
     }
 
     setOutput((prev) => {
-      if (!prev || prev.log.id !== data.log!.id) {
-        return { log: data.log!, alreadyCheckedIn: isAlreadyCheckedIn };
+      if (!prev || prev.log.id !== matchingLog.id) {
+        return { log: matchingLog, alreadyCheckedIn: !!matchingLog };
       }
-      return { log: data.log!, alreadyCheckedIn: prev.alreadyCheckedIn };
+      return { log: matchingLog, alreadyCheckedIn: prev.alreadyCheckedIn };
     });
   };
 
@@ -72,11 +68,6 @@ export default function DailyPage() {
     if (!ready || !address) return;
     loadSnapshot(true);
   }, [address, dayIndex, ready]);
-
-  useEffect(() => {
-    if (!ready || !address) return;
-    loadSnapshot(false);
-  }, [ready]);
 
   if (!ready) return null;
   if (!address) return <NeedAddress />;
@@ -110,7 +101,7 @@ export default function DailyPage() {
       const updated = await api.submitProof({ address, logId: log.id });
       setLog(updated);
       setOutput((prev) => (prev ? { log: updated, alreadyCheckedIn: prev.alreadyCheckedIn } : { log: updated, alreadyCheckedIn: true }));
-      alert("✨ 已保存你的记录");
+      alert("已保存你的记录");
     } catch (e: any) {
       alert(e?.message || "保存失败，请重试");
     }
@@ -126,38 +117,32 @@ export default function DailyPage() {
       });
       setLog(updated);
       setOutput((prev) => (prev ? { log: updated, alreadyCheckedIn: prev.alreadyCheckedIn } : { log: updated, alreadyCheckedIn: true }));
-      alert("🎉 恭喜完成今日任务！");
+      alert("恭喜完成今日任务！");
     } catch (e: any) {
       alert(e?.message || "操作失败，请重试");
     }
   };
 
-  // 生成NFT图片
   const handleGenerateNFT = async () => {
     if (!output?.log) return;
-
     setIsGeneratingNFT(true);
     setNftError(null);
 
     try {
       const data = await api.generateNft({
         address,
-        logId: output.log.id,
+        logId: output.log.id
       });
-
       setNftImage(data.image);
     } catch (e: any) {
-      console.error("NFT generation error:", e);
-      setNftError(e?.message || "NFT 生成失败，请重试");
+      setNftError(e?.message || "NFT 图片生成失败，请重试");
     } finally {
       setIsGeneratingNFT(false);
     }
   };
 
-  // 下载NFT图片
   const handleDownloadNFT = () => {
     if (!nftImage) return;
-
     const link = document.createElement("a");
     link.href = nftImage;
     link.download = `alive28-day${dayIndex}-nft.png`;
@@ -173,7 +158,6 @@ export default function DailyPage() {
   return (
     <div className="grid lg:grid-cols-3 gap-6 animate-fade-in">
       <div className="lg:col-span-2 rounded-2xl border border-pink-100 bg-white/80 backdrop-blur-sm p-8 shadow-sm card-hover">
-        {/* 天数进度条 */}
         <div className="mb-6 animate-slide-in">
           <div className="flex justify-between text-sm text-pink-600/70 mb-2">
             <span>第 {dayIndex} 天 / 28 天</span>
@@ -189,25 +173,31 @@ export default function DailyPage() {
             <div className="text-3xl animate-pulse-slow">📝</div>
             <div>
               <div className="text-sm text-pink-700/70">今日任务</div>
-              <div className="mt-1 text-2xl font-semibold text-pink-900">{taskTitle}</div>
+              <h1 className="mt-1 text-2xl font-semibold text-pink-900" data-testid="daily-task-title">
+                {taskTitle}
+              </h1>
             </div>
           </div>
 
           {taskInstruction && (
             <div className="mt-4 p-4 rounded-xl bg-pink-50/30 border border-pink-100 animate-slide-in">
-              <div className="text-sm font-medium text-pink-700 mb-2">💭 今日任务</div>
+              <div className="text-sm font-medium text-pink-700 mb-2">任务说明</div>
               <div className="text-sm text-pink-700 leading-relaxed">{taskInstruction}</div>
             </div>
           )}
 
           {taskHint && (
-            <div className="mt-3 text-sm text-pink-600/70 italic animate-slide-in">💡 {taskHint}</div>
+            <div className="mt-3 text-sm text-pink-600/70 italic animate-slide-in">{taskHint}</div>
           )}
         </div>
 
         <div className="mt-6">
-          <div className="text-sm font-medium text-pink-700 mb-3">写下你的感受</div>
+          <label className="text-sm font-medium text-pink-700 mb-3 block" htmlFor="daily-checkin-text">
+            写下你的感受
+          </label>
           <textarea
+            id="daily-checkin-text"
+            data-testid="daily-checkin-text"
             className="w-full min-h-[140px] px-4 py-3 rounded-xl border border-pink-100 bg-white focus:outline-none focus:ring-2 focus:ring-pink-200 text-sm text-pink-800 placeholder:text-pink-400/60 resize-none transition-all"
             placeholder={log?.dayNftTxHash ? "今日已完成，可以查看反馈" : "记录下此刻的想法和感受吧..."}
             value={text}
@@ -218,6 +208,7 @@ export default function DailyPage() {
 
           <div className="mt-4 flex flex-wrap gap-3">
             <button
+              data-testid="daily-checkin-submit"
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-200 to-rose-200 text-pink-700 text-sm font-medium hover:from-pink-300 hover:to-rose-300 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed btn-press"
               onClick={handleCheckin}
               disabled={!text.trim() || !!log?.dayNftTxHash}
@@ -228,21 +219,21 @@ export default function DailyPage() {
               <>
                 <button
                   className="px-5 py-3 rounded-xl border border-pink-100 bg-white text-pink-700 text-sm hover:bg-pink-50/50 transition-all disabled:opacity-50 btn-press"
-                  disabled={!!log?.dayNftTxHash}
+                  disabled={!!log?.dayNftTxHash || log?.status === "SUBMITTED"}
                   onClick={handleSubmitProof}
                 >
-                  {log?.status === "SUBMITTED" ? "✓ 已保存" : "保存记录"}
+                  {log?.status === "SUBMITTED" ? "已保存" : "保存记录"}
                 </button>
                 <button
                   className="px-5 py-3 rounded-xl border border-pink-100 bg-white text-pink-700 text-sm hover:bg-pink-50/50 transition-all disabled:opacity-50 btn-press"
                   disabled={!!log?.dayNftTxHash}
                   onClick={() => {
-                    if (window.confirm("确认完成今日任务并铸造 NFT 吗？\n\n铸造后今日感受将无法再修改！")) {
+                    if (window.confirm("确认完成今日任务并铸造 NFT 吗？\n\n铸造后今日感受将无法再修改。")) {
                       handleMintDay();
                     }
                   }}
                 >
-                  {log?.dayNftTxHash ? "✓ 已完成" : "完成今日"}
+                  {log?.dayNftTxHash ? "已完成" : "完成今日"}
                 </button>
               </>
             )}
@@ -270,55 +261,51 @@ export default function DailyPage() {
         )}
 
         {output && (
-          <div className="mt-6 rounded-2xl bg-gradient-to-br from-pink-50/50 to-rose-50/50 p-6 border border-pink-100 shadow-sm animate-fade-in">
+          <div
+            className="mt-6 rounded-2xl bg-gradient-to-br from-pink-50/50 to-rose-50/50 p-6 border border-pink-100 shadow-sm animate-fade-in"
+            data-testid="daily-reflection-card"
+          >
             <div className="text-lg font-semibold text-pink-800 mb-4 flex items-center gap-2">
-              <span className="animate-pulse-slow">✨</span>
+              <span>✅</span>
               <span>你的反馈</span>
             </div>
 
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-white/90 border border-pink-100 animate-slide-in">
-                <div className="text-xs text-pink-600/70 mb-1">💭 今日感悟</div>
-                <div className="text-sm text-pink-800 leading-relaxed">{output.log.reflection.note}</div>
+                <div className="text-xs text-pink-600/70 mb-1">今日感悟</div>
+                <div className="text-sm text-pink-800 leading-relaxed" data-testid="daily-reflection-note">
+                  {output.log.reflection.note}
+                </div>
               </div>
 
               <div className="p-4 rounded-xl bg-white/90 border border-pink-100 animate-slide-in">
-                <div className="text-xs text-pink-600/70 mb-1">🌱 下一步</div>
-                <div className="text-sm text-pink-800 leading-relaxed">{output.log.reflection.next}</div>
+                <div className="text-xs text-pink-600/70 mb-1">下一步</div>
+                <div className="text-sm text-pink-800 leading-relaxed" data-testid="daily-reflection-next">
+                  {output.log.reflection.next}
+                </div>
               </div>
 
-              {/* NFT 铸造区域 */}
               <div className="p-4 rounded-xl bg-gradient-to-r from-purple-50/80 to-pink-50/80 border border-purple-100 animate-slide-in">
                 <div className="text-xs text-purple-600/70 mb-3 flex items-center gap-1">
                   <span>🎨</span>
-                  <span>铸造你的专属 NFT</span>
+                  <span>生成你的专属 NFT 图片</span>
                 </div>
 
                 {!nftImage ? (
                   <div className="space-y-3">
                     <p className="text-sm text-purple-700/80">
-                      根据你今天的感受，生成一幅独一无二的艺术作品
+                      根据今天的任务生成一张纪念图片。图片提示词只使用公开任务信息，不包含你的日记原文。
                     </p>
                     <button
-                      className="w-full px-5 py-3 rounded-xl bg-gradient-to-r from-purple-400 to-pink-400 text-white text-sm font-medium hover:from-purple-500 hover:to-pink-500 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-press flex items-center justify-center gap-2"
+                      className="w-full px-5 py-3 rounded-xl bg-gradient-to-r from-purple-400 to-pink-400 text-white text-sm font-medium hover:from-purple-500 hover:to-pink-500 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-press"
                       onClick={handleGenerateNFT}
                       disabled={isGeneratingNFT}
                     >
-                      {isGeneratingNFT ? (
-                        <>
-                          <span className="animate-spin">🌀</span>
-                          <span>正在生成艺术作品...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>🎨</span>
-                          <span>生成 NFT 图片</span>
-                        </>
-                      )}
+                      {isGeneratingNFT ? "正在生成图片..." : "生成 NFT 图片"}
                     </button>
                     {nftError && (
                       <div className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">
-                        ⚠️ {nftError}
+                        {nftError}
                       </div>
                     )}
                   </div>
@@ -336,18 +323,16 @@ export default function DailyPage() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-400 to-pink-400 text-white text-sm font-medium hover:from-purple-500 hover:to-pink-500 transition-all shadow-sm btn-press flex items-center justify-center gap-1"
+                        className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-400 to-pink-400 text-white text-sm font-medium hover:from-purple-500 hover:to-pink-500 transition-all shadow-sm btn-press"
                         onClick={handleDownloadNFT}
                       >
-                        <span>📥</span>
-                        <span>下载图片</span>
+                        下载图片
                       </button>
                       <button
-                        className="px-4 py-2 rounded-xl border border-purple-200 bg-white text-purple-600 text-sm hover:bg-purple-50 transition-all btn-press flex items-center justify-center gap-1"
+                        className="px-4 py-2 rounded-xl border border-purple-200 bg-white text-purple-600 text-sm hover:bg-purple-50 transition-all btn-press"
                         onClick={() => setNftImage(null)}
                       >
-                        <span>🔄</span>
-                        <span>重新生成</span>
+                        重新生成
                       </button>
                     </div>
                   </div>
@@ -359,26 +344,26 @@ export default function DailyPage() {
       </div>
 
       <div className="rounded-2xl border border-pink-100 bg-white/80 backdrop-blur-sm p-6 shadow-sm card-hover animate-slide-in">
-        <div className="text-sm font-medium text-pink-700 mb-4">📊 今日状态</div>
+        <div className="text-sm font-medium text-pink-700 mb-4">今日状态</div>
         <div className="space-y-3">
           <div className="p-3 rounded-xl bg-pink-50/30 border border-pink-100">
             <div className="text-xs text-pink-600/70">完成状态</div>
-            <div className="mt-1 text-sm font-medium text-pink-700">
-              {already ? "✓ 已完成" : "未完成"}
+            <div className="mt-1 text-sm font-medium text-pink-700" data-testid="daily-completion-status">
+              {already ? "已生成反馈" : "未完成"}
             </div>
           </div>
 
           {log?.status === "SUBMITTED" && (
             <div className="p-3 rounded-xl bg-pink-50/30 border border-pink-100 animate-fade-in">
               <div className="text-xs text-pink-600/70">记录状态</div>
-              <div className="mt-1 text-sm font-medium text-pink-700">✓ 已保存</div>
+              <div className="mt-1 text-sm font-medium text-pink-700">已保存</div>
             </div>
           )}
 
           {log?.dayNftTxHash && (
             <div className="p-3 rounded-xl bg-pink-50/30 border border-pink-100 animate-fade-in">
               <div className="text-xs text-pink-600/70">任务状态</div>
-              <div className="mt-1 text-sm font-medium text-pink-700">🎉 已完成</div>
+              <div className="mt-1 text-sm font-medium text-pink-700">已完成</div>
             </div>
           )}
         </div>
@@ -390,7 +375,7 @@ export default function DailyPage() {
               className="px-4 py-2 rounded-xl border border-pink-100 bg-white text-pink-700 text-sm hover:bg-pink-50/50 transition-all btn-press"
               onClick={() => router.push(`/daily/${Math.max(1, dayIndex - 1)}`)}
             >
-              ← 上一天
+              上一天
             </button>
             <button
               className="px-4 py-2 rounded-xl border border-pink-100 bg-white text-pink-700 text-sm hover:bg-pink-50/50 transition-all btn-press"
@@ -401,11 +386,12 @@ export default function DailyPage() {
                 else router.push(`/daily/${Math.min(28, dayIndex + 1)}`);
               }}
             >
-              下一天 →
+              下一天
             </button>
             <button
               className="px-4 py-2 rounded-xl border border-pink-100 bg-white text-pink-700 text-sm hover:bg-pink-50/50 transition-all btn-press"
               onClick={() => router.push("/progress")}
+              data-testid="daily-progress-link"
             >
               查看进度
             </button>

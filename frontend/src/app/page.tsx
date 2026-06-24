@@ -69,6 +69,7 @@ export default function HomePage() {
 
         <div className="mt-8 flex flex-wrap justify-center gap-4">
           <button
+            data-testid="home-day-button"
             className="px-8 py-4 rounded-2xl bg-gradient-to-r from-pink-200 to-rose-200 text-pink-700 text-lg font-medium hover:from-pink-300 hover:to-rose-300 transition-all shadow-sm transform hover:scale-105 btn-press"
             onClick={() => router.push(`/daily/${dayBtnTarget}`)}
           >

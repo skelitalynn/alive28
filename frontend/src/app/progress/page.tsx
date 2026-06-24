@@ -112,6 +112,7 @@ export default function ProgressPage() {
               completedDays.map((d, i) => (
                 <button
                   key={d}
+                  data-testid={`completed-day-${d}`}
                   className="px-3 py-2 rounded-xl border border-pink-100 bg-pink-50/50 text-pink-700 text-sm hover:bg-pink-50 transition-all btn-press animate-fade-in"
                   style={{ animationDelay: `${i * 0.05}s` }}
                   onClick={() => router.push(`/daily/${d}`)}

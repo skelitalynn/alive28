@@ -29,6 +29,7 @@
 | 2026-06-24 | 每日完成链路绑定页面当前 `DailyLog` 的 `logId` | Proof 批准、链上 Proof 确认和 Day NFT 确认必须指向同一条持久化日志，避免前端在交易前后重新选择“当前日期”导致状态写入另一条记录 | Accepted |
 | 2026-06-24 | `/health` 暴露生产配置 readiness，但不替代链上 receipt 校验 | 配置完整性和链上事实是两层检查；缺少 RPC、合约地址、metadata URI 或 validator 私钥时应提前暴露 `ready=false`，但交易成功仍必须由确认接口验证 receipt、sender、contract 和 event | Accepted |
 | 2026-06-24 | 前端只保留一个正式后端调用 seam | 旧浏览器端 mock/Agent、本地 mock store 和根目录 `frontend/lib` 平行实现与后端 SpoonOS Graph 规则冲突，删除后把 LLM、安全校验和业务状态的 locality 固定在后端 | Accepted |
+| 2026-06-24 | 浏览器级 smoke 使用受控 mock backend 验证真实前端 seam | F-012 需要自动化真实 UI Happy Path，但不能恢复浏览器端业务 mock/Agent；mock backend 只存在于测试进程，用来稳定验证页面与 `httpClient` seam | Accepted |
 
 ## 待决定
 

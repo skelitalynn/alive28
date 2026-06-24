@@ -8,6 +8,7 @@
 | 前端遗留实现 | `python scripts/harness/check_no_frontend_legacy.py` | 禁止旧 mock/Agent Adapter、本地 mock store 和根目录 `frontend/lib` 平行实现回流 |
 | 后端 | `python -m pytest backend/app/tests -q` | 钱包认证、receipt/event、Reflection Safety、Checkpoint、生命周期清理、事务与幂等 |
 | 前端 | `npm --prefix frontend run build` | Next.js 构建和 TypeScript 检查 |
+| 前端浏览器 smoke | `node scripts/e2e/frontend_smoke.mjs` | 真实 Next.js UI + 受控 mock backend，覆盖 Demo Day 1 打卡闭环 |
 | 合约 | `forge test --root contracts` | ProofRegistry 与 RestartBadgeNFT |
 
 完整验证：
@@ -71,6 +72,28 @@ Invoke-RestMethod "http://127.0.0.1:8000/progress?address=0x11111111111111111111
 Invoke-RestMethod "http://127.0.0.1:8000/report?address=0x1111111111111111111111111111111111111111&range=week"
 ```
 
+## 前端浏览器 Smoke
+
+```powershell
+node scripts/e2e/frontend_smoke.mjs
+```
+
+该脚本会启动一个只存在于测试进程内的受控 mock backend，并用
+`NEXT_PUBLIC_API_BASE` 启动真实 Next.js dev server。浏览器随后完成：
+
+1. 输入 Demo 地址。
+2. 从首页进入 Day 1。
+3. 提交有意义的打卡文本。
+4. 等待 Reflection 卡片展示。
+5. 跳转 `/progress` 并确认 Day 1 已完成。
+
+脚本依赖本机已安装的 Chromium 系浏览器。默认尝试 Windows Edge/Chrome；
+也可以通过 `PLAYWRIGHT_BROWSER_CHANNEL` 或 `PLAYWRIGHT_EXECUTABLE_PATH` 指定。
+端口可用 `ALIVE28_E2E_API_PORT` 和 `ALIVE28_E2E_APP_PORT` 覆盖。
+
+这个 mock backend 只用于验证前端 HTTP seam 和页面行为，不是浏览器端业务
+mock/Agent Adapter，也不替代后端 SpoonOS Graph 集成测试。
+
 ## 当前 LLM 与恢复覆盖
 
 当前自动化已覆盖：
@@ -89,8 +112,9 @@ Invoke-RestMethod "http://127.0.0.1:8000/report?address=0x1111111111111111111111
 - 每日闭环绑定同一条持久化日志：checkin、validator approval、verified Proof submission、verified Day NFT mint 和 progress refresh 由 `test_daily_completion_loop.py` 覆盖。
 - 生产 readiness 覆盖 Demo 不阻塞、非 Demo 缺失配置列出 blocking issues、完整配置返回 ready。
 - 前端遗留实现检查覆盖旧 mock/Agent Adapter、本地 mock store、旧 `frontend/lib` API/ABI Module 及其引用。
+- 前端浏览器 smoke 覆盖 Demo 身份、首页、每日页、Reflection 展示和进度页完成状态。
 
-仍缺少大规模离线安全评测、真实供应商故障测试和并发恢复竞争测试。
+仍缺少大规模离线安全评测、真实供应商故障测试、并发恢复竞争测试，以及前端失败态和真实后端联调浏览器测试。
 
 生命周期测试覆盖 dry-run、实际清理、重复执行、完成/未完成 Checkpoint 的不同保留期，以及业务记录和已消费批准的保留。
 
@@ -138,6 +162,8 @@ NFT 图片隐私测试覆盖钱包认证、日志所有权、撤销过滤、额�
 4. `/progress` 显示完成天数。
 5. `/report` 可生成周报或使用 fallback。
 6. 未配置合约时不执行真实交易。
+
+F-012 已把第 1、2、4 项的 Demo Happy Path 自动化为浏览器 smoke；其余手工项仍需后续补充自动化。
 
 ## 完成定义
 

@@ -142,6 +142,32 @@ npm --prefix frontend run dev
 
 未部署合约时不要执行真实链上按钮。前端会在发起钱包交易前拒绝零地址或非法合约地址配置；后端 `/health.ready=false` 时说明生产链路尚未就绪。
 
+### 前端浏览器 Smoke
+
+```powershell
+node scripts\e2e\frontend_smoke.mjs
+```
+
+该命令从仓库根目录执行。脚本会：
+
+1. 在测试进程内启动受控 mock backend。
+2. 用 `NEXT_PUBLIC_API_BASE` 指向该 mock backend 启动真实 Next.js dev server。
+3. 通过浏览器完成 Demo 地址、Day 1 打卡、Reflection 展示和进度页完成状态检查。
+
+这不是正式业务 mock，也不会恢复旧的浏览器端 Agent/mock Adapter；正式前端仍只通过
+`frontend/src/lib/api/index.ts -> httpClient` 调用后端 seam。
+
+可选进程变量：
+
+| 变量 | 用途 | 默认值 |
+|---|---|---|
+| `ALIVE28_E2E_API_PORT` | mock backend 端口 | `18880` |
+| `ALIVE28_E2E_APP_PORT` | Next.js dev server 端口 | `3100` |
+| `PLAYWRIGHT_BROWSER_CHANNEL` | 指定浏览器 channel，如 `msedge` 或 `chrome` | Windows 默认依次尝试 `msedge`、`chrome` |
+| `PLAYWRIGHT_EXECUTABLE_PATH` | 指定浏览器可执行文件路径 | 未设置 |
+
+脚本使用 `playwright-core`，不会自动下载浏览器。机器上需要已有 Edge、Chrome 或显式指定的 Chromium 系浏览器。
+
 ## 本地 MVP 路径
 
 1. 打开 `http://localhost:3000`。

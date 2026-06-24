@@ -48,18 +48,21 @@ export default function AddressBar() {
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   ref={inputRef}
+                  data-testid="demo-address-input"
                   className="px-4 py-2 rounded-xl border border-pink-100 bg-white w-full sm:w-80 text-sm text-pink-900 placeholder:text-pink-400/60 focus:outline-none focus:ring-2 focus:ring-pink-200 transition-all"
                   placeholder="输入你的标识..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                 />
                 <button
+                  data-testid="demo-address-start"
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-200 to-rose-200 text-pink-700 text-sm font-medium hover:from-pink-300 hover:to-rose-300 transition-all shadow-sm btn-press"
                   onClick={applyInputAsAddress}
                 >
                   开始
                 </button>
                 <button
+                  data-testid="demo-address-random"
                   className="px-4 py-2 rounded-xl border border-pink-100 bg-white text-pink-600 text-sm hover:bg-pink-50/50 transition-all btn-press"
                   onClick={randomAddress}
                 >

@@ -1,0 +1,19 @@
+{
+  "feature_id": "F-012",
+  "verified_at": "20260624T060721Z",
+  "passed": true,
+  "commands": [
+    {
+      "command": "npm --prefix frontend run build",
+      "returncode": 0,
+      "log": ".harness\\evidence\\F-012\\20260624T060721Z\\command-01.log"
+    },
+    {
+      "command": "node scripts/e2e/frontend_smoke.mjs",
+      "returncode": 0,
+      "log": ".harness\\evidence\\F-012\\20260624T060721Z\\command-02.log"
+    }
+  ],
+  "git_head": "084aaee",
+  "working_tree_dirty": true
+}

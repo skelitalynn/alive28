@@ -115,6 +115,17 @@
       ],
       "evidence": ".harness\\evidence\\F-011\\20260624T032749Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-012",
+      "behavior": "A browser-level smoke test proves the demo frontend loop works through the real Next.js UI and one backend seam: with a controlled mock backend, a user can enter a demo identity, open Day 1, submit a meaningful checkin, see the generated reflection, navigate to progress, and see Day 1 recorded without using the deleted mock/Agent adapters.",
+      "state": "passing",
+      "verification": [
+        "npm --prefix frontend run build",
+        "node scripts/e2e/frontend_smoke.mjs"
+      ],
+      "evidence": ".harness\\evidence\\F-012\\20260624T060721Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }
