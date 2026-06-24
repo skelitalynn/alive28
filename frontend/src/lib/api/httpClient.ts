@@ -251,19 +251,13 @@ async function checkin(params: { address: string; dayIndex: number; text: string
   };
 }
 
-async function getTodaySnapshot(address: string): Promise<DailySnapshot> {
-  const home = await getHomeSnapshot(address);
-  return getDailySnapshot(address, home.dayBtnTarget);
-}
-
-async function submitProof(params: { address: string }): Promise<DailyLog> {
-  const snapshot = await getTodaySnapshot(params.address);
-  const log = snapshot.log;
-  if (!log) throw new Error("请先 checkin 生成 proofHash");
-  if (log.txHash) throw new Error("已提交过 Proof（幂等）");
-
+async function submitProof(params: {
+  address: string;
+  logId: string;
+}): Promise<DailyLog> {
   const approval = await fetchJson<{
     approvalId: `0x${string}`;
+    dayIndex: number;
     deadline: number;
     signature: `0x${string}`;
     proofHash: `0x${string}`;
@@ -271,14 +265,14 @@ async function submitProof(params: { address: string }): Promise<DailyLog> {
     method: "POST",
     body: JSON.stringify({
       address: params.address,
-      logId: log.id
+      logId: params.logId
     })
   });
   const data = encodeFunctionData({
     abi: ProofRegistryAbi,
     functionName: "submitProof",
     args: [
-      log.dayIndex,
+      approval.dayIndex,
       approval.proofHash,
       BigInt(approval.deadline),
       approval.approvalId,
@@ -287,10 +281,12 @@ async function submitProof(params: { address: string }): Promise<DailyLog> {
   });
   const txHash = await sendTx({ to: PROOF_REGISTRY, data });
 
-  await fetchJson("/tx/confirm", {
+  const confirmation = await fetchJson<{ ok: boolean; log: any }>(
+    "/tx/confirm",
+    {
     method: "POST",
     body: JSON.stringify({
-      logId: log.id,
+      logId: params.logId,
       address: params.address,
       txHash,
       chainId: CHAIN_ID,
@@ -298,41 +294,35 @@ async function submitProof(params: { address: string }): Promise<DailyLog> {
       approvalId: approval.approvalId
     })
   });
-
-  const refreshed = await getTodaySnapshot(params.address);
-  if (!refreshed.log) throw new Error("log not found after submit");
-  return refreshed.log;
+  return mapLog(confirmation.log);
 }
 
-async function mintDay(params: { address: string }): Promise<DailyLog> {
-  const snapshot = await getTodaySnapshot(params.address);
-  const log = snapshot.log;
-  if (!log) throw new Error("请先 checkin");
-  if (!log.txHash) throw new Error("请先提交 Proof（submitProof）");
-  if (log.dayNftTxHash) throw new Error("今日 DayNFT 已 mint（幂等）");
-
+async function mintDay(params: {
+  address: string;
+  logId: string;
+  dayIndex: number;
+}): Promise<DailyLog> {
   const data = encodeFunctionData({
     abi: RestartBadgeSbtAbi,
     functionName: "mintDay",
-    args: [log.dayIndex]
+    args: [params.dayIndex]
   });
   const txHash = await sendTx({ to: BADGE_NFT, data });
 
-  await fetchJson("/nft/confirm", {
+  const confirmation = await fetchJson<{ ok: boolean; log: any }>(
+    "/nft/confirm",
+    {
     method: "POST",
     body: JSON.stringify({
       address: params.address,
       type: "DAY",
-      dayIndex: log.dayIndex,
+      logId: params.logId,
       txHash,
       chainId: CHAIN_ID,
       contractAddress: BADGE_NFT
     })
   });
-
-  const refreshed = await getTodaySnapshot(params.address);
-  if (!refreshed.log) throw new Error("log not found after mintDay");
-  return refreshed.log;
+  return mapLog(confirmation.log);
 }
 
 async function getProgressRaw(address: string): Promise<any> {

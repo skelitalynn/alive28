@@ -26,6 +26,7 @@
 | 2026-06-22 | 临时安全状态由显式幂等维护命令清理 | challenge、session、未消费批准和 Checkpoint 不应无限增长；完成 Checkpoint 保留 7 天、未完成保留 30 天，已消费批准和业务记录不删除 | Accepted |
 | 2026-06-23 | NFT 图片 Prompt 只使用公开任务视觉元数据 | 图片供应商不需要日记或 Reflection 即可生成装饰性资产；钱包 session 与日志所有权只用于授权，不进入 Prompt | Accepted |
 | 2026-06-23 | 里程碑 tokenId 和 metadata URI 由后端准备 | tokenId 同时参与前端交易和后端事件验证，必须只有一个规范算法；前端不得使用时间戳或随机值 | Accepted |
+| 2026-06-24 | 每日完成链路绑定页面当前 `DailyLog` 的 `logId` | Proof 批准、链上 Proof 确认和 Day NFT 确认必须指向同一条持久化日志，避免前端在交易前后重新选择“当前日期”导致状态写入另一条记录 | Accepted |
 
 ## 待决定
 

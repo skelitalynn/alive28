@@ -139,7 +139,7 @@ GET /report
 POST /proof/approval(logId)
   -> require wallet session and owned persisted DailyLog
   -> require ACTIVE safety-approved proof and no confirmed tx
-  -> return short-lived validator signature
+  -> return short-lived validator signature and persisted dayIndex
 Browser sends submitProof(dayIndex, proofHash, deadline, approvalId, signature)
   -> client submits txHash to backend
   -> backend queries configured RPC
@@ -147,10 +147,16 @@ Browser sends submitProof(dayIndex, proofHash, deadline, approvalId, signature)
   -> verify transaction sender and target contract
   -> verify ProofSubmitted event includes the approved proof and approvalId
   -> mark the approval consumed and write submitted state
-  -> backend writes submitted/minted state
+  -> backend returns the updated DailyLog
+Browser sends mintDay(dayIndex) for that same log
+  -> client submits txHash to backend with logId
+  -> backend verifies Day NFT event against the persisted log dayIndex
+  -> backend records the day NFT receipt and returns the updated DailyLog
 ```
 
 客户端提交的 `chainId`、`contractAddress` 和 `address` 均为不可信输入。RPC 不可用、交易回滚、发送者不匹配、目标合约错误或事件内容错误时，本地状态不改变。
+
+前端不得在 Proof 提交或 Day NFT 确认之间重新按“当前日期”选择日志。页面显示哪条 `DailyLog`，后续批准、链上确认和进度刷新就必须绑定同一个 `logId`；后端以持久化日志中的 `day_index` 校验链上事件，并把更新后的同一条日志返回给前端。
 
 里程碑 NFT 使用后端准备流程：
 

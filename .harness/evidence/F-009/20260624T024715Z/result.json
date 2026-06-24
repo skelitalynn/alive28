@@ -1,0 +1,19 @@
+{
+  "feature_id": "F-009",
+  "verified_at": "20260624T024715Z",
+  "passed": true,
+  "commands": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_daily_completion_loop.py backend\\app\\tests\\test_wallet_auth_and_receipts.py backend\\app\\tests\\test_proof_approval_and_compensation.py -q",
+      "returncode": 0,
+      "log": ".harness\\evidence\\F-009\\20260624T024715Z\\command-01.log"
+    },
+    {
+      "command": "npm --prefix frontend run build",
+      "returncode": 0,
+      "log": ".harness\\evidence\\F-009\\20260624T024715Z\\command-02.log"
+    }
+  ],
+  "git_head": "b80444b",
+  "working_tree_dirty": true
+}

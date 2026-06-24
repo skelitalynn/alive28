@@ -161,6 +161,7 @@ class TxConfirmRequest(BaseModel):
 
 class TxConfirmResponse(BaseModel):
     ok: bool
+    log: DailyLogResponse
 
 
 class ProofApprovalRequest(BaseModel):
@@ -170,6 +171,7 @@ class ProofApprovalRequest(BaseModel):
 
 class ProofApprovalResponse(BaseModel):
     approvalId: str
+    dayIndex: int
     deadline: int
     signature: str
     proofHash: str
@@ -196,6 +198,7 @@ class ProofCompensationResponse(BaseModel):
 class NftConfirmRequest(BaseModel):
     address: str
     type: str  # "DAY" | "FINAL"
+    logId: Optional[str] = None
     dayIndex: Optional[int] = None
     txHash: str
     chainId: int
@@ -204,6 +207,7 @@ class NftConfirmRequest(BaseModel):
 
 class NftConfirmResponse(BaseModel):
     ok: bool
+    log: Optional[DailyLogResponse] = None
 
 
 class MilestoneMintRequest(BaseModel):

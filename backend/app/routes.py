@@ -700,7 +700,7 @@ async def tx_confirm(
     if log.address != address:
         _http_error(403, "ADDRESS_FORBIDDEN", "log belongs to another address")
     if log.tx_hash:
-        return {"ok": True}
+        return {"ok": True, "log": _log_to_response(log)}
     if log.proof_status != "ACTIVE":
         _http_error(
             409,
@@ -755,7 +755,8 @@ async def tx_confirm(
         "approvalId": approval.approval_id if approval else None,
     }
     await _invoke_graph(state)
-    return {"ok": True}
+    session.refresh(log)
+    return {"ok": True, "log": _log_to_response(log)}
 
 
 @router.post("/proof/approval", response_model=ProofApprovalResponse)
@@ -788,6 +789,7 @@ def proof_approval(
         _http_error(503, "APPROVAL_UNAVAILABLE", str(exc))
     return {
         "approvalId": approval.approval_id,
+        "dayIndex": approval.day_index,
         "deadline": approval.deadline,
         "signature": approval.signature,
         "proofHash": approval.proof_hash,
@@ -877,21 +879,30 @@ def nft_confirm(
     address = _require_address(payload.address)
     _authorize_address(address, authorization, session)
     if payload.type == "DAY":
-        if payload.dayIndex is None:
-            _http_error(400, "INVALID_ARGUMENT", "dayIndex required for type=DAY")
-        log = session.exec(
-            select(DailyLog).where(
-                DailyLog.address == address,
-                DailyLog.challenge_id == settings.challenge_id,
-                DailyLog.day_index == payload.dayIndex,
-            )
-        ).first()
+        if payload.logId:
+            log = session.get(DailyLog, payload.logId)
+        else:
+            if payload.dayIndex is None:
+                _http_error(
+                    400,
+                    "INVALID_ARGUMENT",
+                    "logId or dayIndex required for type=DAY",
+                )
+            log = session.exec(
+                select(DailyLog).where(
+                    DailyLog.address == address,
+                    DailyLog.challenge_id == settings.challenge_id,
+                    DailyLog.day_index == payload.dayIndex,
+                )
+            ).first()
         if not log:
-            _http_error(404, "NOT_FOUND", "log not found for dayIndex")
+            _http_error(404, "NOT_FOUND", "log not found")
+        if log.address != address:
+            _http_error(403, "ADDRESS_FORBIDDEN", "log belongs to another address")
         if not is_log_eligible(log):
             _http_error(409, "PROOF_REVOKED", "revoked proof cannot mint a day NFT")
         if log.day_nft_tx_hash:
-            return {"ok": True}
+            return {"ok": True, "log": _log_to_response(log)}
         if not settings.demo_mode:
             try:
                 verifier.verify_day_mint(
@@ -899,7 +910,7 @@ def nft_confirm(
                     address=address,
                     chain_id=payload.chainId,
                     contract_address=payload.contractAddress,
-                    day_index=payload.dayIndex,
+                    day_index=log.day_index,
                 )
             except ChainVerificationError as exc:
                 _http_error(400, "INVALID_CHAIN_RECEIPT", str(exc))
@@ -911,12 +922,14 @@ def nft_confirm(
             progress.updated_at = datetime.utcnow()
             session.add(progress)
         session.commit()
+        session.refresh(log)
+        return {"ok": True, "log": _log_to_response(log)}
     elif payload.type == "FINAL":
         progress = session.exec(select(UserProgress).where(UserProgress.address == address)).first()
         if not progress:
             _http_error(404, "NOT_FOUND", "user not found")
         if progress.final_nft_tx_hash:
-            return {"ok": True}
+            return {"ok": True, "log": None}
         if not settings.demo_mode:
             try:
                 verifier.verify_final_mint(
@@ -934,7 +947,7 @@ def nft_confirm(
         session.commit()
     else:
         _http_error(400, "INVALID_ARGUMENT", "type must be DAY or FINAL")
-    return {"ok": True}
+    return {"ok": True, "log": None}
 
 
 @router.post("/milestone/prepare", response_model=MilestonePrepareResponse)

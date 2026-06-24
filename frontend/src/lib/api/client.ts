@@ -93,8 +93,12 @@ export interface ApiClient {
   getHomeSnapshot: (address?: string | null) => Promise<HomeSnapshot>;
   getDailySnapshot: (address: string, dayIndex: number) => Promise<DailySnapshot>;
   checkin: (params: { address: string; dayIndex: number; text: string; checkinId?: string }) => Promise<CheckinResult>;
-  submitProof: (params: { address: string }) => Promise<DailyLog>;
-  mintDay: (params: { address: string }) => Promise<DailyLog>;
+  submitProof: (params: { address: string; logId: string }) => Promise<DailyLog>;
+  mintDay: (params: {
+    address: string;
+    logId: string;
+    dayIndex: number;
+  }) => Promise<DailyLog>;
   getProgress: (params: { address: string }) => Promise<ProgressData>;
   composeFinal: (params: { address: string }) => Promise<User>;
   prepareMilestone: (params: {

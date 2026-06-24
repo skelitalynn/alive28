@@ -85,6 +85,7 @@ Invoke-RestMethod "http://127.0.0.1:8000/report?address=0x1111111111111111111111
 - nonce 单次消费、session 地址绑定和未认证拒绝。
 - Proof receipt 的 chain、status、sender、contract 和事件匹配。
 - 伪造 Day NFT 与 Milestone 事件不会改变本地状态。
+- 每日闭环绑定同一条持久化日志：checkin、validator approval、verified Proof submission、verified Day NFT mint 和 progress refresh 由 `test_daily_completion_loop.py` 覆盖。
 
 仍缺少大规模离线安全评测、真实供应商故障测试和并发恢复竞争测试。
 
@@ -93,6 +94,8 @@ Invoke-RestMethod "http://127.0.0.1:8000/report?address=0x1111111111111111111111
 NFT 图片隐私测试覆盖钱包认证、日志所有权、撤销过滤、额外客户端字段拒绝，以及第三方 Prompt 中不存在日记、Reflection、地址和 Proof。
 
 里程碑测试覆盖资格不足拒绝、规范 tokenId/URI 的稳定准备、前端类型构建，以及链上 `Transfer` 事件与后端规范 tokenId 一致后才记录成功。
+
+每日完成闭环测试覆盖非 Demo 钱包 session、同一 `logId` 的 Proof 批准、批准消费、链上 Proof receipt 记录、Day NFT receipt 记录，以及完成/已铸造进度刷新。
 
 ## Reflection Safety 计划验收
 

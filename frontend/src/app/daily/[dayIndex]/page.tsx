@@ -105,8 +105,9 @@ export default function DailyPage() {
   };
 
   const handleSubmitProof = async () => {
+    if (!log) return;
     try {
-      const updated = await api.submitProof({ address });
+      const updated = await api.submitProof({ address, logId: log.id });
       setLog(updated);
       setOutput((prev) => (prev ? { log: updated, alreadyCheckedIn: prev.alreadyCheckedIn } : { log: updated, alreadyCheckedIn: true }));
       alert("✨ 已保存你的记录");
@@ -116,8 +117,13 @@ export default function DailyPage() {
   };
 
   const handleMintDay = async () => {
+    if (!log) return;
     try {
-      const updated = await api.mintDay({ address });
+      const updated = await api.mintDay({
+        address,
+        logId: log.id,
+        dayIndex: log.dayIndex
+      });
       setLog(updated);
       setOutput((prev) => (prev ? { log: updated, alreadyCheckedIn: prev.alreadyCheckedIn } : { log: updated, alreadyCheckedIn: true }));
       alert("🎉 恭喜完成今日任务！");

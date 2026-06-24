@@ -82,6 +82,17 @@
       ],
       "evidence": ".harness\\evidence\\F-008\\20260623T070105Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-009",
+      "behavior": "The daily completion path is bound to the exact persisted log shown by the page: checkin, validator approval, verified Proof submission, verified Day NFT mint, and progress refresh complete one idempotent loop without reselecting a different current-day log; an integration test proves the same log reaches SUBMITTED, consumes its approval, records its Day NFT receipt, and appears in completed/minted progress.",
+      "state": "passing",
+      "verification": [
+        ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_daily_completion_loop.py backend\\app\\tests\\test_wallet_auth_and_receipts.py backend\\app\\tests\\test_proof_approval_and_compensation.py -q",
+        "npm --prefix frontend run build"
+      ],
+      "evidence": ".harness\\evidence\\F-009\\20260624T024715Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }
