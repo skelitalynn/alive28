@@ -1,17 +1,17 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import NeedAddress from "../../../components/NeedAddress";
 import { api } from "../../../lib/api";
 import { useAddress } from "../../../components/addressContext";
-import type { DailyLog, DailyTask } from "../../../lib/store/schema";
+import type { DailyLog, DailyTask } from "../../../lib/domain/schema";
 import type { CheckinOutcome } from "../../../lib/api/client";
 
 export default function DailyPage() {
   const params = useParams();
   const router = useRouter();
-  const { address, storeVersion, ready } = useAddress();
+  const { address, ready } = useAddress();
 
   const rawParam = params?.dayIndex;
   const rawDayIndex = Array.isArray(rawParam) ? rawParam[0] : rawParam;
@@ -76,7 +76,7 @@ export default function DailyPage() {
   useEffect(() => {
     if (!ready || !address) return;
     loadSnapshot(false);
-  }, [storeVersion, ready]);
+  }, [ready]);
 
   if (!ready) return null;
   if (!address) return <NeedAddress />;

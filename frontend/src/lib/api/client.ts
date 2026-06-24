@@ -1,4 +1,4 @@
-import type { DailyLog, DailyTask, User } from "../store/schema";
+import type { DailyLog, DailyTask, User } from "../domain/schema";
 
 export type HomeSnapshot = {
   dayBtnLabel: string;

@@ -9,7 +9,7 @@ import { useAddress } from "../../components/addressContext";
 
 export default function ProgressPage() {
   const router = useRouter();
-  const { address, storeVersion, ready } = useAddress();
+  const { address, ready } = useAddress();
   const [data, setData] = useState<ProgressData | null>(null);
 
   const load = async () => {
@@ -21,7 +21,7 @@ export default function ProgressPage() {
   useEffect(() => {
     if (!ready || !address) return;
     load();
-  }, [address, storeVersion, ready]);
+  }, [address, ready]);
 
   if (!ready) return null;
   if (!address) return <NeedAddress />;

@@ -1,4 +1,4 @@
-﻿import type { DailyTask, Reflection } from "../store/schema";
+import type { DailyTask, Reflection } from "../domain/schema";
 
 export function reflectionTemplate(task: DailyTask, normalizedText: string): Reflection {
   const t = normalizedText || "";

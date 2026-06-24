@@ -7,7 +7,7 @@ import { useAddress } from "../components/addressContext";
 
 export default function HomePage() {
   const router = useRouter();
-  const { address, storeVersion, ready } = useAddress();
+  const { address, ready } = useAddress();
   const [dayBtnLabel, setDayBtnLabel] = useState("Day 1");
   const [dayBtnTarget, setDayBtnTarget] = useState(1);
   const [progress, setProgress] = useState(0);
@@ -24,7 +24,7 @@ export default function HomePage() {
         setProgress(p);
       });
     }
-  }, [address, storeVersion, ready]);
+  }, [address, ready]);
 
   if (!ready) return null;
 

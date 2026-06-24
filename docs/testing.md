@@ -5,6 +5,7 @@
 | 范围 | 命令 | 当前覆盖 |
 |---|---|---|
 | Harness 和文档 | `python scripts/harness/check_docs.py` | 文档路由、配置和本地链接 |
+| 前端遗留实现 | `python scripts/harness/check_no_frontend_legacy.py` | 禁止旧 mock/Agent Adapter、本地 mock store 和根目录 `frontend/lib` 平行实现回流 |
 | 后端 | `python -m pytest backend/app/tests -q` | 钱包认证、receipt/event、Reflection Safety、Checkpoint、生命周期清理、事务与幂等 |
 | 前端 | `npm --prefix frontend run build` | Next.js 构建和 TypeScript 检查 |
 | 合约 | `forge test --root contracts` | ProofRegistry 与 RestartBadgeNFT |
@@ -87,6 +88,7 @@ Invoke-RestMethod "http://127.0.0.1:8000/report?address=0x1111111111111111111111
 - 伪造 Day NFT 与 Milestone 事件不会改变本地状态。
 - 每日闭环绑定同一条持久化日志：checkin、validator approval、verified Proof submission、verified Day NFT mint 和 progress refresh 由 `test_daily_completion_loop.py` 覆盖。
 - 生产 readiness 覆盖 Demo 不阻塞、非 Demo 缺失配置列出 blocking issues、完整配置返回 ready。
+- 前端遗留实现检查覆盖旧 mock/Agent Adapter、本地 mock store、旧 `frontend/lib` API/ABI Module 及其引用。
 
 仍缺少大规模离线安全评测、真实供应商故障测试和并发恢复竞争测试。
 

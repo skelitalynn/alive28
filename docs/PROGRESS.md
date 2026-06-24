@@ -8,6 +8,8 @@
 
 `F-010 Production Readiness Gate` 已完成实现与目标验证：非 Demo 模式通过 `/health` 暴露生产配置就绪状态，并在前端钱包交易前拒绝零地址合约配置。
 
+`F-011 Frontend Legacy Adapter Cleanup` 已完成代码清理与目标验证：正式前端只保留 `src/lib/api/index.ts -> httpClient` 这一条后端调用 seam，旧浏览器端 mock/Agent、本地 mock store 和根目录 `frontend/lib` 平行实现已删除。
+
 ## 最近完成
 
 - 建立 `docs/README.md` 单一文档入口。
@@ -40,6 +42,7 @@
 - 里程碑准备接口统一资格检查、tokenId 和 metadata URI；前端铸造与后端事件验证使用同一 tokenId。
 - 每日完成闭环已绑定持久化日志 ID；前端 Proof 提交和 Day NFT mint 都传递页面当前 `logId`，后端确认后返回更新后的同一条日志，避免用户界面和链上确认指向不同记录。
 - `/health` 已返回结构化 readiness；非 Demo 缺少 RPC、合约地址、metadata URI 或 validator 私钥时 `ready=false` 并列出 blocking issues。前端交易 helper 会在请求钱包前拒绝零地址或非法合约地址。
+- 前端旧 mock/Agent Adapter、本地 mock store 和 `frontend/lib` 平行 API/ABI 实现已删除；新增 Harness 检查防止这些文件或引用回流。
 
 ## 当前实现状态
 
@@ -68,7 +71,6 @@
 - 前端没有自动化测试。
 - 数据库仍未引入正式迁移工具；F-005 提供一次性 SQLite 迁移脚本。
 - 没有 CI。
-- `mockClient.ts`、`spoonClient.ts`、`spoonAgent.ts` 和旧 `frontend/lib/api.ts` 形成重复实现。
 - 部分源码仍存在历史编码损坏。
 
 ### 当前验证基线
@@ -80,13 +82,13 @@
 - 合约测试：6 passed。
 - Next.js 生产构建通过。
 - Harness 文档路由检查通过。
-- `F-002` 至 `F-010` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
+- `F-002` 至 `F-011` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
 
 ## 下一步建议
 
 1. 修复用户主路径中的历史乱码并增加浏览器级端到端闭环验收。
 2. 为长期记忆增加明确授权、查看、删除和撤回。
 3. 决定是否把 Proof 补偿状态同步到链上，阻止撤销后的合约级后续铸造。
-4. 清理历史前端 Agent，实现正式数据库迁移和 CI。
+4. 实现正式数据库迁移和 CI。
 
 实际执行顺序由 `docs/FEATURES.json` 中唯一的 `active` 功能项决定。

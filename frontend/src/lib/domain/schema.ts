@@ -1,4 +1,4 @@
-﻿export type Reflection = {
+export type Reflection = {
   note: string;
   next: string;
 };
@@ -28,7 +28,7 @@ export type DailyLog = {
   status: DailyLogStatus;
   txHash: string | null;
   dayNftTxHash: string | null;
-  nftImage: string | null; // 生成的NFT图片 base64 数据
+  nftImage: string | null;
   createdAt: string;
 };
 
@@ -40,10 +40,5 @@ export type User = {
   dayMintCount: number;
   finalMinted: boolean;
   finalNftTxHash: string | null;
-  milestones: Record<number, string>; // key: 1 (Week 1), 2 (Week 2), value: txHash
-};
-
-export type Store = {
-  users: Record<string, User>;
-  logs: DailyLog[];
+  milestones: Record<number, string>;
 };

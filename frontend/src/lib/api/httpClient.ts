@@ -8,7 +8,7 @@ import type {
   ProgressData,
   ReportData
 } from "./client";
-import type { DailyLog, User } from "../store/schema";
+import type { DailyLog, User } from "../domain/schema";
 import { encodeFunctionData } from "viem";
 import { mockTxHash } from "../logic/proof";
 import { tasks } from "../tasks/tasks";
@@ -111,7 +111,9 @@ async function authenticateWallet(
   address: string,
   signMessage?: (message: string) => Promise<string>
 ): Promise<void> {
-  if (typeof window === "undefined") throw new Error("钱包认证只能在浏览器中执行");
+  if (typeof window === "undefined") {
+    throw new Error("钱包认证只能在浏览器中执行");
+  }
   const normalized = address.toLowerCase();
   const existingAddress = window.sessionStorage.getItem(AUTH_ADDRESS_KEY);
   if (existingAddress === normalized && getStoredAuthToken()) return;
@@ -131,7 +133,9 @@ async function authenticateWallet(
     const ethereum = getEthereum();
     if (!ethereum) throw new Error("未检测到钱包（window.ethereum）");
     const walletAddress = (await getWalletAddress(ethereum)).toLowerCase();
-    if (walletAddress !== normalized) throw new Error("当前钱包地址与连接地址不一致");
+    if (walletAddress !== normalized) {
+      throw new Error("当前钱包地址与连接地址不一致");
+    }
     signature = await ethereum.request({
       method: "personal_sign",
       params: [challenge.message, normalized]

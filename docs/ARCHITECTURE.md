@@ -27,10 +27,11 @@ Wallet ---------- Solidity contracts
 - `frontend/src/app/`：首页、每日任务、进度、报告和里程碑页面。
 - `frontend/src/components/`：地址、钱包和共享 UI。
 - `frontend/src/lib/api/httpClient.ts`：后端请求和钱包交易调用。
+- `frontend/src/lib/api/index.ts`：前端唯一正式后端调用 seam，固定导出 `httpClient`。
+- `frontend/src/lib/domain/schema.ts`：前端共享领域类型。
 - `frontend/src/lib/nft/`：里程碑元数据与铸造辅助逻辑。
-- `frontend/src/lib/store/`：旧的本地模拟存储实现；当前正式入口不使用它。
 
-`mockClient.ts`、`spoonClient.ts`、`spoonAgent.ts` 和 `frontend/lib/api.ts` 当前不在活动调用链，属于待清理的历史实现。
+旧的浏览器端 mock/Agent Adapter、本地 mock store，以及根目录 `frontend/lib/` 平行 API/ABI Module 已删除。前端不再建立与后端并行的 Agent seam；LLM、Reflection Safety 和持久化仍由后端 SpoonOS Graph 负责。
 
 ### 后端
 

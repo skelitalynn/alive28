@@ -1,4 +1,4 @@
-﻿import type { DailyTask } from "../store/schema";
+import type { DailyTask } from "../domain/schema";
 
 export const tasks: DailyTask[] = Array.from({ length: 28 }, (_, i) => {
   const d = i + 1;

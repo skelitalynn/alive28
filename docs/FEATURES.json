@@ -104,6 +104,17 @@
       ],
       "evidence": ".harness\\evidence\\F-010\\20260624T025712Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-011",
+      "behavior": "The frontend has one active backend API seam: src/lib/api/index.ts exports httpClient only; legacy browser-side mock/Agent adapters and old frontend/lib API/ABI modules are deleted, no frontend imports or text references remain, and production build still passes.",
+      "state": "passing",
+      "verification": [
+        "python scripts/harness/check_no_frontend_legacy.py",
+        "npm --prefix frontend run build"
+      ],
+      "evidence": ".harness\\evidence\\F-011\\20260624T032749Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }

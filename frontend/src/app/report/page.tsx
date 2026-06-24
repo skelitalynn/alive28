@@ -13,7 +13,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 function ReportContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { address, storeVersion, ready } = useAddress();
+  const { address, ready } = useAddress();
   const [data, setData] = useState<ReportData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,7 +36,7 @@ function ReportContent() {
   useEffect(() => {
     if (!ready || !address) return;
     load();
-  }, [address, range, storeVersion, ready]);
+  }, [address, range, ready]);
 
   const option = useMemo(() => {
     if (!data) return {};
