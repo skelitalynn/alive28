@@ -90,6 +90,24 @@ Address API
 服务端只保存 session token 的 SHA-256，不保存明文 token。前端 token 保存在
 `sessionStorage`，钱包断开或 API 返回 401 时清除。Demo 模式仍允许手动地址，但该地址不代表钱包所有权。
 
+### 生产就绪门禁
+
+`GET /health` 同时承担本地运行状态和生产配置门禁：
+
+```text
+DEMO_MODE=true
+  -> mode=demo
+  -> ready=true
+  -> 不要求 RPC、合约地址或 validator 私钥
+
+DEMO_MODE=false
+  -> mode=production
+  -> 检查 RPC_URL、ProofRegistry、RestartBadgeNFT、MilestoneNFT、MILESTONE_BASE_URI、validator 私钥
+  -> 任一缺失、零地址或占位值时 ready=false，并返回 blockingIssues
+```
+
+该检查只证明配置完整，不替代真实 RPC 连通性或合约事件验证。真实链上状态仍以各确认接口中的 receipt、sender、contract 和 event 校验为准。前端在发起钱包交易前也会拒绝零地址或非法合约地址，避免用户把交易发到占位合约。
+
 ## 主要调用链
 
 ### 每日打卡

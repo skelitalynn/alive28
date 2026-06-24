@@ -6,6 +6,8 @@
 
 `F-009 Persisted Daily Completion Loop` 已完成实现与目标验证。每日主链路现在绑定页面正在展示的同一条持久化 `DailyLog`：Proof 批准、链上 Proof 确认、Day NFT 确认和进度刷新都使用同一个 `logId`，不再重新按“当前日期”选择另一条日志。
 
+`F-010 Production Readiness Gate` 已完成实现与目标验证：非 Demo 模式通过 `/health` 暴露生产配置就绪状态，并在前端钱包交易前拒绝零地址合约配置。
+
 ## 最近完成
 
 - 建立 `docs/README.md` 单一文档入口。
@@ -37,6 +39,7 @@
 - NFT 图片接口只接受用户拥有的日志引用；第三方 Prompt 仅使用公开 Day、任务标题和阶段配色。
 - 里程碑准备接口统一资格检查、tokenId 和 metadata URI；前端铸造与后端事件验证使用同一 tokenId。
 - 每日完成闭环已绑定持久化日志 ID；前端 Proof 提交和 Day NFT mint 都传递页面当前 `logId`，后端确认后返回更新后的同一条日志，避免用户界面和链上确认指向不同记录。
+- `/health` 已返回结构化 readiness；非 Demo 缺少 RPC、合约地址、metadata URI 或 validator 私钥时 `ready=false` 并列出 blocking issues。前端交易 helper 会在请求钱包前拒绝零地址或非法合约地址。
 
 ## 当前实现状态
 
@@ -73,18 +76,17 @@
 2026-06-24：
 
 - SpoonOS SDK 锁定为 `spoon-ai-sdk==0.4.10`。
-- 后端测试：35 passed。
+- 后端测试：38 passed。
 - 合约测试：6 passed。
 - Next.js 生产构建通过。
 - Harness 文档路由检查通过。
-- `F-002` 至 `F-009` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
+- `F-002` 至 `F-010` 的 Harness 证据路径记录在 `docs/FEATURES.json`。
 
 ## 下一步建议
 
-1. 增加生产配置/就绪门禁，避免未配置 RPC、合约地址或 validator 私钥时误以为真实链路可用。
-2. 修复用户主路径中的历史乱码并增加浏览器级端到端闭环验收。
-3. 为长期记忆增加明确授权、查看、删除和撤回。
-4. 决定是否把 Proof 补偿状态同步到链上，阻止撤销后的合约级后续铸造。
-5. 清理历史前端 Agent，实现正式数据库迁移和 CI。
+1. 修复用户主路径中的历史乱码并增加浏览器级端到端闭环验收。
+2. 为长期记忆增加明确授权、查看、删除和撤回。
+3. 决定是否把 Proof 补偿状态同步到链上，阻止撤销后的合约级后续铸造。
+4. 清理历史前端 Agent，实现正式数据库迁移和 CI。
 
 实际执行顺序由 `docs/FEATURES.json` 中唯一的 `active` 功能项决定。

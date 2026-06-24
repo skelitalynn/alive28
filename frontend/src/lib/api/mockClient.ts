@@ -334,8 +334,16 @@ async function getReport(params: { address: string; range: "week" | "final" }): 
   return { title, reportText, recentLogs, chartByDay: byDay, range };
 }
 
-async function getConfig(): Promise<{ demo_mode: boolean }> {
-  return { demo_mode: false };
+async function getConfig() {
+  return {
+    status: "ok",
+    version: "mock",
+    demo_mode: false,
+    mode: "production" as const,
+    ready: true,
+    checks: {},
+    blockingIssues: []
+  };
 }
 
 export const mockClient: ApiClient = {

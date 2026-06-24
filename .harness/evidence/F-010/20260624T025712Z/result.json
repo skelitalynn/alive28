@@ -1,0 +1,19 @@
+{
+  "feature_id": "F-010",
+  "verified_at": "20260624T025712Z",
+  "passed": true,
+  "commands": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_readiness.py backend\\app\\tests\\test_core.py -q",
+      "returncode": 0,
+      "log": ".harness\\evidence\\F-010\\20260624T025712Z\\command-01.log"
+    },
+    {
+      "command": "npm --prefix frontend run build",
+      "returncode": 0,
+      "log": ".harness\\evidence\\F-010\\20260624T025712Z\\command-02.log"
+    }
+  ],
+  "git_head": "b5c1c8c",
+  "working_tree_dirty": true
+}

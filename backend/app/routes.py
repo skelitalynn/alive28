@@ -80,6 +80,8 @@ from spoon_ai.graph.types import Command, StateSnapshot
 
 router = APIRouter()
 
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 
 def _http_error(status: int, code: str, message: str, details: Optional[dict] = None):
     raise HTTPException(status_code=status, detail={"error": {"code": code, "message": message, "details": details or {}}})
@@ -87,6 +89,104 @@ def _http_error(status: int, code: str, message: str, details: Optional[dict] = 
 
 def _lower_address(addr: str) -> str:
     return addr.strip().lower()
+
+
+def _has_non_placeholder_text(value: str | None) -> bool:
+    normalized = (value or "").strip()
+    if not normalized:
+        return False
+    lowered = normalized.lower()
+    return "your_" not in lowered and "your-domain" not in lowered
+
+
+def _is_configured_address(value: str | None) -> bool:
+    normalized = (value or "").strip().lower()
+    if normalized == ZERO_ADDRESS:
+        return False
+    if len(normalized) != 42 or not normalized.startswith("0x"):
+        return False
+    return all(char in "0123456789abcdef" for char in normalized[2:])
+
+
+def _is_configured_private_key(value: str | None) -> bool:
+    normalized = (value or "").strip().lower()
+    if normalized.startswith("0x"):
+        normalized = normalized[2:]
+    if len(normalized) != 64:
+        return False
+    if set(normalized) == {"0"}:
+        return False
+    return all(char in "0123456789abcdef" for char in normalized)
+
+
+def _production_readiness() -> Dict[str, Any]:
+    if settings.demo_mode:
+        return {
+            "status": "ok",
+            "mode": "demo",
+            "ready": True,
+            "checks": {},
+            "blockingIssues": [],
+        }
+
+    checks = {
+        "rpcUrl": _has_non_placeholder_text(settings.rpc_url),
+        "proofRegistryAddress": _is_configured_address(
+            settings.proof_registry_address
+        ),
+        "restartBadgeAddress": _is_configured_address(
+            settings.restart_badge_address
+        ),
+        "milestoneNftAddress": _is_configured_address(
+            settings.milestone_nft_address
+        ),
+        "milestoneBaseUri": _has_non_placeholder_text(
+            settings.milestone_base_uri
+        ),
+        "proofApprovalPrivateKey": _is_configured_private_key(
+            settings.proof_approval_private_key
+        ),
+    }
+    issue_messages = {
+        "rpcUrl": (
+            "RPC_URL_MISSING",
+            "RPC_URL must point to the chain used for receipt verification.",
+        ),
+        "proofRegistryAddress": (
+            "PROOF_REGISTRY_ADDRESS_MISSING",
+            "PROOF_REGISTRY_ADDRESS must be a deployed non-zero contract address.",
+        ),
+        "restartBadgeAddress": (
+            "RESTART_BADGE_ADDRESS_MISSING",
+            "RESTART_BADGE_ADDRESS must be a deployed non-zero contract address.",
+        ),
+        "milestoneNftAddress": (
+            "MILESTONE_NFT_ADDRESS_MISSING",
+            "MILESTONE_NFT_ADDRESS must be a deployed non-zero contract address.",
+        ),
+        "milestoneBaseUri": (
+            "MILESTONE_BASE_URI_MISSING",
+            "MILESTONE_BASE_URI must be a public metadata base URI.",
+        ),
+        "proofApprovalPrivateKey": (
+            "PROOF_APPROVAL_PRIVATE_KEY_MISSING",
+            "PROOF_APPROVAL_PRIVATE_KEY must be a configured validator private key.",
+        ),
+    }
+    blocking_issues = [
+        {"code": code, "message": message}
+        for key, passed in checks.items()
+        if not passed
+        for code, message in (issue_messages[key],)
+    ]
+    ready = not blocking_issues
+    return {
+        "status": "ok" if ready else "not_ready",
+        "mode": "production",
+        "ready": ready,
+        "checks": checks,
+        "blockingIssues": blocking_issues,
+    }
 
 
 def _require_address(addr: str) -> str:
@@ -377,7 +477,12 @@ async def _invoke_graph(
 
 @router.get("/health", response_model=HealthResponse)
 def health():
-    return {"status": "ok", "version": settings.version, "demo_mode": settings.demo_mode}
+    readiness = _production_readiness()
+    return {
+        "version": settings.version,
+        "demo_mode": settings.demo_mode,
+        **readiness,
+    }
 
 
 @router.post("/auth/nonce", response_model=AuthNonceResponse)

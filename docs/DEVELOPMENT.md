@@ -39,8 +39,30 @@ GET http://127.0.0.1:8000/health
 预期结构：
 
 ```json
-{"status":"ok","version":"mvp-1.0.0","demo_mode":false}
+{
+  "status": "not_ready",
+  "version": "mvp-1.0.0",
+  "demo_mode": false,
+  "mode": "production",
+  "ready": false,
+  "checks": {
+    "rpcUrl": false,
+    "proofRegistryAddress": false,
+    "restartBadgeAddress": false,
+    "milestoneNftAddress": false,
+    "milestoneBaseUri": false,
+    "proofApprovalPrivateKey": false
+  },
+  "blockingIssues": [
+    {
+      "code": "RPC_URL_MISSING",
+      "message": "RPC_URL must point to the chain used for receipt verification."
+    }
+  ]
+}
 ```
+
+`DEMO_MODE=true` 时 `/health` 不要求链上配置，`ready=true` 且 `mode=demo`。非 Demo 模式下，`ready=false` 表示真实链上闭环不可用，必须先修复 `blockingIssues` 中列出的 RPC、合约地址、metadata URI 或 validator 私钥配置。
 
 ### 后端环境变量
 
@@ -50,13 +72,14 @@ GET http://127.0.0.1:8000/health
 | `DEFAULT_TIMEZONE` | 默认时区 | `Asia/Shanghai` |
 | `CHALLENGE_ID` | 当前挑战 ID | `1` |
 | `CHAIN_ID` | 后端允许确认的链 | `11155111` |
-| `RPC_URL` | receipt/event 查询节点 | 必须配置 |
-| `PROOF_REGISTRY_ADDRESS` | ProofRegistry 合约 | 部署地址 |
-| `RESTART_BADGE_ADDRESS` | Day/Final NFT 合约 | 部署地址 |
-| `MILESTONE_NFT_ADDRESS` | Milestone NFT 合约 | 部署地址 |
+| `RPC_URL` | receipt/event 查询节点 | 非 Demo 必须配置；占位值会使 `/health.ready=false` |
+| `PROOF_REGISTRY_ADDRESS` | ProofRegistry 合约 | 非 Demo 必须是非零部署地址 |
+| `RESTART_BADGE_ADDRESS` | Day/Final NFT 合约 | 非 Demo 必须是非零部署地址 |
+| `MILESTONE_NFT_ADDRESS` | Milestone NFT 合约 | 非 Demo 必须是非零部署地址 |
+| `MILESTONE_BASE_URI` | Milestone metadata 根地址 | 非 Demo 必须替换占位域名 |
 | `AUTH_NONCE_TTL_SECONDS` | 签名 challenge 有效期 | `300` |
 | `AUTH_SESSION_TTL_SECONDS` | 钱包 session 有效期 | `86400` |
-| `PROOF_APPROVAL_PRIVATE_KEY` | ProofRegistry validator 私钥，仅后端持有 | 必须配置 |
+| `PROOF_APPROVAL_PRIVATE_KEY` | ProofRegistry validator 私钥，仅后端持有 | 非 Demo 必须配置为有效私钥 |
 | `PROOF_APPROVAL_TTL_SECONDS` | 单次 Proof 批准有效期（秒） | `300` |
 | `CHECKPOINT_COMPLETED_RETENTION_SECONDS` | 已完成 Checkpoint 保留期 | `604800`（7 天） |
 | `CHECKPOINT_INCOMPLETE_RETENTION_SECONDS` | 未完成/失败 Checkpoint 保留期 | `2592000`（30 天） |
@@ -117,7 +140,7 @@ npm --prefix frontend run dev
 | `NEXT_PUBLIC_BADGE_NFT` | RestartBadgeNFT 地址 |
 | `NEXT_PUBLIC_MILESTONE_NFT` | MilestoneNFT 地址 |
 
-未部署合约时不要执行真实链上按钮。前端当前仍会尝试调用配置的合约地址。
+未部署合约时不要执行真实链上按钮。前端会在发起钱包交易前拒绝零地址或非法合约地址配置；后端 `/health.ready=false` 时说明生产链路尚未就绪。
 
 ## 本地 MVP 路径
 

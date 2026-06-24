@@ -6,10 +6,19 @@ class ErrorResponse(BaseModel):
     error: Dict[str, Any]
 
 
+class HealthIssue(BaseModel):
+    code: str
+    message: str
+
+
 class HealthResponse(BaseModel):
     status: str
     version: str
     demo_mode: bool = False
+    mode: Literal["demo", "production"] = "production"
+    ready: bool = True
+    checks: Dict[str, bool] = Field(default_factory=dict)
+    blockingIssues: List[HealthIssue] = Field(default_factory=list)
 
 
 class DailyPromptResponse(BaseModel):

@@ -1,6 +1,7 @@
 import type {
   ApiClient,
   CheckinResult,
+  ConfigData,
   DailySnapshot,
   HomeSnapshot,
   MilestoneMintPreparation,
@@ -14,8 +15,9 @@ import { tasks } from "../tasks/tasks";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111");
-const PROOF_REGISTRY = process.env.NEXT_PUBLIC_PROOF_REGISTRY || "0x0000000000000000000000000000000000000000";
-const BADGE_NFT = process.env.NEXT_PUBLIC_BADGE_NFT || "0x0000000000000000000000000000000000000000";
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const PROOF_REGISTRY = process.env.NEXT_PUBLIC_PROOF_REGISTRY || ZERO_ADDRESS;
+const BADGE_NFT = process.env.NEXT_PUBLIC_BADGE_NFT || ZERO_ADDRESS;
 const MILESTONE_NFT = process.env.NEXT_PUBLIC_MILESTONE_NFT || BADGE_NFT;
 const AUTH_TOKEN_KEY = "alive28:auth_token";
 const AUTH_ADDRESS_KEY = "alive28:auth_address";
@@ -166,15 +168,25 @@ async function getWalletAddress(ethereum: any) {
 }
 
 async function sendTx(params: { to: string; data: string }): Promise<string> {
+  const to = requireConfiguredContractAddress(params.to);
   const ethereum = getEthereum();
   if (!ethereum) throw new Error("未检测到钱包（window.ethereum）");
   await ensureChain(ethereum);
   const from = await getWalletAddress(ethereum);
   const txHash = await ethereum.request({
     method: "eth_sendTransaction",
-    params: [{ from, to: params.to, data: params.data, value: "0x0" }]
+    params: [{ from, to, data: params.data, value: "0x0" }]
   });
   return txHash as string;
+}
+
+function requireConfiguredContractAddress(address: string): string {
+  const normalized = (address || "").trim().toLowerCase();
+  const isHexAddress = /^0x[a-f0-9]{40}$/.test(normalized);
+  if (!isHexAddress || normalized === ZERO_ADDRESS) {
+    throw new Error("合约地址未配置，请先设置前端 NEXT_PUBLIC_* 合约地址。");
+  }
+  return normalized;
 }
 
 function mapLog(raw: any): DailyLog {
@@ -419,9 +431,17 @@ async function getReport(params: { address: string; range: "week" | "final" }): 
   };
 }
 
-async function getConfig(): Promise<{ demo_mode: boolean }> {
-  const res = await fetchJson<{ status: string; version: string; demo_mode?: boolean }>("/health");
-  return { demo_mode: res.demo_mode ?? false };
+async function getConfig(): Promise<ConfigData> {
+  const res = await fetchJson<ConfigData>("/health");
+  return {
+    status: res.status,
+    version: res.version,
+    demo_mode: res.demo_mode ?? false,
+    mode: res.mode ?? (res.demo_mode ? "demo" : "production"),
+    ready: res.ready ?? true,
+    checks: res.checks ?? {},
+    blockingIssues: res.blockingIssues ?? []
+  };
 }
 
 async function generateNft(params: {

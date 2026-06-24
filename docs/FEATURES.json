@@ -93,6 +93,17 @@
       ],
       "evidence": ".harness\\evidence\\F-009\\20260624T024715Z\\result.json",
       "blocked_reason": null
+    },
+    {
+      "id": "F-010",
+      "behavior": "Non-demo startup exposes an explicit production readiness gate: /health reports ready=false with named blocking configuration issues when RPC, contract addresses, milestone metadata URI, or validator private key are missing or placeholder values; the frontend config type consumes that status and wallet transaction helpers refuse zero-address contract configuration before asking the wallet to send a transaction.",
+      "state": "passing",
+      "verification": [
+        ".\\.venv\\Scripts\\python.exe -m pytest backend\\app\\tests\\test_readiness.py backend\\app\\tests\\test_core.py -q",
+        "npm --prefix frontend run build"
+      ],
+      "evidence": ".harness\\evidence\\F-010\\20260624T025712Z\\result.json",
+      "blocked_reason": null
     }
   ]
 }

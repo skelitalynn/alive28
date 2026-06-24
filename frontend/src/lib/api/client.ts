@@ -66,7 +66,20 @@ export type ReportData = {
   range: "week" | "final";
 };
 
-export type ConfigData = { demo_mode: boolean };
+export type ConfigIssue = {
+  code: string;
+  message: string;
+};
+
+export type ConfigData = {
+  status: string;
+  version: string;
+  demo_mode: boolean;
+  mode: "demo" | "production";
+  ready: boolean;
+  checks: Record<string, boolean>;
+  blockingIssues: ConfigIssue[];
+};
 
 export type GenerateNftResult = {
   success: boolean;
